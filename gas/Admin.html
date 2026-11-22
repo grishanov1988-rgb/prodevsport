@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Админ-панель</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f; --bg2: #15151c; --bg3: #1e1e28;
+    --text: #e8eaed; --hint: #9aa0a6;
+    --accent: #7c3aed; --accent2: #7c3aed22;
+    --line: #2a2a36; --win: #22c55e; --lose: #ef4444; --warn: #f59e0b;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 15px; line-height: 1.4; padding-bottom: 80px; }
+  .header { display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--line);
+    background: var(--bg); position: sticky; top: 0; z-index: 10; }
+  .header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+  .header .badge { background: var(--accent2); color: var(--accent);
+    padding: 4px 10px; border-radius: 8px; font-size: 11px;
+    font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+  .content { padding: 16px; }
+  .card { background: var(--bg2); border-radius: 14px; padding: 16px;
+    margin-bottom: 12px; border: 1px solid var(--line); }
+  .card h3 { margin: 0 0 12px; font-size: 12px; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--hint); font-weight: 700; }
+  .row { display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; gap: 8px; }
+  .row:last-child { border-bottom: none; }
+  .row .label { color: var(--hint); flex-shrink: 0; }
+  .row .value { font-weight: 600; text-align: right; word-break: break-word; }
+  .ok { color: var(--win); font-weight: 700; }
+  .err { color: var(--lose); font-weight: 700; }
+  .warn { color: var(--warn); font-weight: 700; }
+  .btn { display: inline-block; padding: 12px 18px; background: var(--accent);
+    color: #fff; border: none; border-radius: 10px; font-weight: 600;
+    font-size: 14px; cursor: pointer; width: 100%; text-align: center; }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .5; pointer-events: none; }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .btn-sm { padding: 8px 12px; font-size: 13px; }
+  .btn-ghost { background: var(--bg3); color: var(--text); }
+  .btn-danger { background: var(--lose); }
+  .loader { text-align: center; padding: 60px 20px; color: var(--hint); }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--line);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin .8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-box { background: rgba(239,68,68,.1); border: 1px solid var(--lose);
+    border-radius: 12px; padding: 16px; color: var(--lose); text-align: center; }
+  .nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex;
+    background: var(--bg); border-top: 1px solid var(--line); z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom); }
+  .nav-item { flex: 1; padding: 10px 2px 12px; text-align: center;
+    cursor: pointer; color: var(--hint); font-size: 10px; font-weight: 500; }
+  .nav-item .ico { display: block; font-size: 20px; margin-bottom: 3px; }
+  .nav-item.active { color: var(--accent); font-weight: 700; }
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .metric-box { background: var(--bg3); border-radius: 10px;
+    padding: 12px 8px; text-align: center; }
+  .metric-box .num { font-size: 20px; font-weight: 800; color: var(--accent); }
+  .metric-box .lbl { font-size: 10px; color: var(--hint);
+    margin-top: 3px; text-transform: uppercase; letter-spacing: .5px; }
+  input, select, textarea {
+    width: 100%; padding: 10px 12px; background: var(--bg3);
+    border: 1px solid var(--line); border-radius: 10px; color: var(--text);
+    font-size: 14px; font-family: inherit; margin-bottom: 8px;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  textarea { min-height: 100px; resize: vertical; }
+  .user-card { background: var(--bg2); border-radius: 12px; padding: 14px;
+    margin-bottom: 8px; border: 1px solid var(--line); }
+  .user-card .name { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+  .user-card .meta { font-size: 12px; color: var(--hint); margin-bottom: 8px; }
+  .user-card .stats { display: flex; gap: 12px; font-size: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .user-card .stats b { color: var(--accent); }
+  .match-card { background: var(--bg2); border-radius: 12px; padding: 14px;
+    margin-bottom: 8px; border: 1px solid var(--line); }
+  .match-card .teams { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+  .match-card .meta { font-size: 12px; color: var(--hint); margin-bottom: 8px; }
+  .match-card .score { font-size: 18px; font-weight: 800; color: var(--win); margin: 6px 0; }
+  .match-card .actions { display: flex; gap: 8px; margin-top: 8px; }
+  .match-card .actions button { flex: 1; padding: 8px 10px; font-size: 12px; }
+  .event { display: flex; gap: 8px; padding: 8px 0;
+    border-bottom: 1px solid var(--line); font-size: 13px; align-items: flex-start; }
+  .event:last-child { border-bottom: none; }
+  .event .ts { color: var(--hint); font-size: 11px; flex-shrink: 0; min-width: 45px; }
+  .event .msg { flex: 1; word-break: break-word; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.75);
+    z-index: 200; display: none; align-items: center; justify-content: center;
+    padding: 20px; }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--bg); border-radius: 16px; padding: 20px;
+    width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto;
+    border: 1px solid var(--line); }
+  .modal h2 { margin: 0 0 12px; font-size: 16px; }
+  .modal-close { position: absolute; top: 12px; right: 12px;
+    background: transparent; border: none; color: var(--hint);
+    font-size: 24px; cursor: pointer; }
+  .empty { text-align: center; padding: 30px 20px; color: var(--hint); font-size: 13px; }
+  .loading-sm { text-align: center; padding: 20px; color: var(--hint); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🔧 Админ-панель</h1>
+  <span class="badge" id="hdrBadge">Владелец</span>
+</div>
+
+<div id="app" class="content">
+  <div class="loader"><div class="spinner"></div>Проверка доступа...</div>
+</div>
+
+<div class="nav" id="nav" style="display:none">
+  <div class="nav-item" data-tab="home">
+    <span class="ico">🏠</span>Главная
+  </div>
+  <div class="nav-item" data-tab="users">
+    <span class="ico">👥</span>Люди
+  </div>
+  <div class="nav-item" data-tab="matches">
+    <span class="ico">⚽</span>Матчи
+  </div>
+  <div class="nav-item" data-tab="predictions">
+    <span class="ico">📝</span>Прогнозы
+  </div>
+  <div class="nav-item" data-tab="update">
+    <span class="ico">🔄</span>Обновление
+  </div>
+  <div class="nav-item" data-tab="broadcast">
+    <span class="ico">📢</span>Рассылка
+  </div>
+  <div class="nav-item" data-tab="analytics">
+    <span class="ico">📊</span>Аналитика
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  ИНИЦИАЛИЗАЦИЯ
+// ============================================================
+var tg = window.Telegram ? window.Telegram.WebApp : null;
+if (tg) { try { tg.ready(); tg.expand(); } catch (e) {} }
+
+var ADMIN_KEY = <?!= JSON.stringify(adminKey || "") ?>;
+var CHAT_ID   = <?!= JSON.stringify(chatId || "") ?>;
+var USER_NAME = <?!= JSON.stringify(userName || "") ?>;
+var INIT_DATA = (tg && tg.initData) ? tg.initData : "";
+
+if (!ADMIN_KEY || !CHAT_ID) {
+  document.getElementById('app').innerHTML =
+    '<div class="error-box">Не переданы параметры. Откройте через /admin в боте.</div>';
+  throw new Error('missing auth');
+}
+
+var STATE = {
+  tab: 'home',
+  bootstrap: null,
+  users: { list: [], page: 1, search: '', hasMore: true },
+  matches: { list: [], league: 'all', tour: '' },
+  predictions: { list: [], page: 1, search: '', hasMore: true },
+  chain: null,
+  triggers: [],
+  broadcastStats: null
+};
+
+// ============================================================
+//  API ОБЁРТКА
+// ============================================================
+function api(fn) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  var all = [ADMIN_KEY, CHAT_ID, INIT_DATA].concat(args);
+  return new Promise(function (resolve, reject) {
+    try {
+      var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+      r[fn].apply(r, all);
+    } catch (e) { reject(e); }
+  });
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  try {
+    var d = new Date(iso);
+    return d.toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  } catch (e) { return iso; }
+}
+
+function showModal(html) {
+  var bg = document.getElementById('modalBg');
+  if (!bg) {
+    bg = document.createElement('div');
+    bg.id = 'modalBg';
+    bg.className = 'modal-bg';
+    bg.innerHTML = '<div class="modal" id="modalBody"></div>';
+    bg.addEventListener('click', function(e) {
+      if (e.target === bg) closeModal();
+    });
+    document.body.appendChild(bg);
+  }
+  document.getElementById('modalBody').innerHTML = html;
+  bg.classList.add('show');
+}
+
+function closeModal() {
+  var bg = document.getElementById('modalBg');
+  if (bg) bg.classList.remove('show');
+}
+
+// ============================================================
+//  НАВИГАЦИЯ
+// ============================================================
+document.querySelectorAll('.nav-item').forEach(function(el) {
+  el.addEventListener('click', function() {
+    var tab = el.dataset.tab;
+    if (STATE.tab === tab) return;
+    STATE.tab = tab;
+    updateNav();
+    render();
+  });
+});
+
+function updateNav() {
+  document.querySelectorAll('.nav-item').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.tab === STATE.tab);
+  });
+}
+
+function render() {
+  var app = document.getElementById('app');
+  try {
+    if (STATE.tab === 'home')        return renderHome(app);
+    if (STATE.tab === 'users')       return renderUsers(app);
+    if (STATE.tab === 'matches')     return renderMatches(app);
+    if (STATE.tab === 'predictions') return renderPredictions(app);
+    if (STATE.tab === 'update')      return renderUpdate(app);
+    if (STATE.tab === 'broadcast')   return renderBroadcast(app);
+    if (STATE.tab === 'analytics')   return renderAnalytics(app);
+  } catch (err) {
+    app.innerHTML = '<div class="error-box">Ошибка: ' + esc(err.message || err) + '</div>';
+  }
+}
+
+// ============================================================
+//  ГЛАВНАЯ
+// ============================================================
+function renderHome(app) {
+  app.innerHTML = '<div class="loader"><div class="spinner"></div>Загрузка...</div>';
+
+  api('admin_getBootstrap').then(function(res) {
+    if (!res || !res.ok) {
+      app.innerHTML = '<div class="error-box">Ошибка: ' + esc(res && res.error) + '</div>';
+      return;
+    }
+
+    STATE.bootstrap = res;
+    var s = res.status || {};
+    var m = res.metrics || {};
+    var ev = res.events || [];
+    var chain = s.chain;
+
+    var chainHtml = chain
+      ? 'Этап: ' + esc(chain.stage) + ' · ' + (chain.currentIndex || 0) + '/' +
+        (chain.leagues || []).length + ' (' + esc((chain.leagues || [])[chain.currentIndex] || '—') + ')'
+      : 'не запущена';
+
+    var html = '';
+
+    html += '<div class="card">' +
+      '<h3>⚡ Статус системы</h3>' +
+      '<div class="row"><span class="label">Supabase</span>' +
+        '<span class="value ' + (s.supabase === 'ok' ? 'ok' : 'err') + '">' +
+        (s.supabase === 'ok' ? '✅ Онлайн' : '❌ ' + esc(s.supabase)) +
+        '</span></div>' +
+      '<div class="row"><span class="label">Триггеры</span>' +
+        '<span class="value">' + (s.triggers || 0) + ' активны</span></div>' +
+      '<div class="row"><span class="label">Цепочка</span>' +
+        '<span class="value">' + esc(chainHtml) + '</span></div>' +
+      '<div class="row"><span class="label">Webhook</span>' +
+        '<span class="value ' + (s.webhook === 'ok' ? 'ok' : 'warn') + '">' +
+        (s.webhook === 'ok' ? '✅ OK' : '⚠️ ' + esc(s.webhook)) +
+        '</span></div>' +
+      (s.webhookError ? '<div class="row"><span class="label">Ошибка WH</span>' +
+        '<span class="value err">' + esc(s.webhookError) + '</span></div>' : '') +
+    '</div>';
+
+    html += '<div class="card">' +
+      '<h3>📊 Метрики</h3>' +
+      '<div class="metric-grid">' +
+        '<div class="metric-box"><div class="num">' + (m.users || 0) + '</div><div class="lbl">Игроков</div></div>' +
+        '<div class="metric-box"><div class="num">' + (m.predictions || 0) + '</div><div class="lbl">Прогнозов</div></div>' +
+        '<div class="metric-box"><div class="num">' + (m.matches || 0) + '</div><div class="lbl">Матчей</div></div>' +
+      '</div>' +
+      '<div class="metric-grid" style="margin-top:8px">' +
+        '<div class="metric-box"><div class="num">' + (m.active7d || 0) + '</div><div class="lbl">Актив. 7д</div></div>' +
+        '<div class="metric-box"><div class="num">' + (m.preds24h || 0) + '</div><div class="lbl">+24ч</div></div>' +
+        '<div class="metric-box"><div class="num">' + (m.scoredMatches || 0) + '</div><div class="lbl">Со счётом</div></div>' +
+      '</div>' +
+    '</div>';
+
+    html += '<div class="card">' +
+      '<h3>⚡ Быстрые действия</h3>' +
+      '<button class="btn" onclick="quickAction(\'update\')">🔄 Запустить обновление</button>' +
+      '<div class="btn-row">' +
+        '<button class="btn btn-ghost btn-sm" onclick="quickAction(\'sync\')">📤 Sync в БД</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="quickAction(\'rebuild\')">🔃 Пересчёт рейтинга</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="quickAction(\'cache\')">🧹 Очистить кэш</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="quickAction(\'check\')">💾 Проверить связь</button>' +
+      '</div>' +
+    '</div>';
+
+    html += '<div class="card">' +
+      '<h3>📋 Последние события</h3>' +
+      (ev.length === 0
+        ? '<div class="empty">Событий пока нет</div>'
+        : ev.slice(0, 15).map(function(e) {
+            var icon = e.type === 'ok' ? '✅' : (e.type === 'warn' ? '⚠️' : '❌');
+            return '<div class="event"><span class="ts">' +
+              esc(fmtDate(e.ts).split(',')[1] || '') + '</span>' +
+              '<span class="msg">' + icon + ' ' + esc(e.message) + '</span></div>';
+          }).join('')
+      ) +
+    '</div>';
+
+    app.innerHTML = html;
+  }).catch(function(err) {
+    app.innerHTML = '<div class="error-box">Ошибка: ' + esc(err.message || err) + '</div>';
+  });
+}
+
+function quickAction(action) {
+  var labels = {
+    update: 'Запустить полное обновление лиг? (~20 мин)',
+    sync: 'Синхронизировать матчи с Supabase?',
+    rebuild: 'Пересчитать рейтинг всех игроков?',
+    cache: 'Очистить весь кэш?',
+    check: 'Проверить соединение?'
+  };
+  if (!confirm(labels[action])) return;
+
+  var fnMap = {
+    update: 'admin_startUpdate',
+    sync: 'admin_runSync',
+    rebuild: 'admin_rebuildUserPoints',
+    cache: 'admin_clearCache',
+    check: 'admin_checkConnection'
+  };
+
+  var app = document.getElementById('app');
+  app.innerHTML = '<div class="loader"><div class="spinner"></div>Выполняется...</div>';
+
+  api(fnMap[action]).then(function(r) {
+    alert(r && r.ok ? '✅ Готово' : '❌ ' + (r && r.error));
+    renderHome(app);
+  }).catch(function(e) {
+    alert('❌ ' + (e.message || e));
+    renderHome(app);
+  });
+}
+
+// ============================================================
+//  ПОЛЬЗОВАТЕЛИ
+// ============================================================
+function renderUsers(app) {
+  app.innerHTML = '<div class="loader"><div class="spinner"></div>Загрузка...</div>';
+
+  api('admin_getUsers', STATE.users.page, STATE.users.search).then(function(res) {
+    if (!res || !res.ok) {
+      app.innerHTML = '<div class="error-box">' + esc(res && res.error) + '</div>';
+      return;
+    }
+
+    STATE.users.list = res.users || [];
+    STATE.users.hasMore = res.hasMore;
+
+    var html = '<div class="card" style="padding:12px">' +
+      '<input type="text" id="searchUsers" placeholder="🔍 Поиск по имени/username" value="' +
+        esc(STATE.users.search) + '">' +
+    '</div>';
+
+    if (!STATE.users.list.length) {
+      html += '<div class="empty">Пользователей не найдено</div>';
+    } else {
+      STATE.users.list.forEach(function(u) {
+        var display = u.firstName ? (u.firstName + ' ' + u.lastName).trim() : u.userName;
+        html += '<div class="user-card">' +
+          '<div class="name">' + esc(display) + '</div>' +
+          '<div class="meta">' + (u.username ? '@' + esc(u.username) + ' · ' : '') +
+            'chat_id: ' + esc(u.chatId || '—') + '</div>' +
+          '<div class="stats">' +
+            '<span>📝 <b>' + u.preds + '</b> прогнозов</span>' +
+            '<span>🏆 <b>' + u.points + '</b> очков</span>' +
+            '<span>⭐ XP <b>' + u.xp + '</b></span>' +
+            '<span>LVL <b>' + u.level + '</b></span>' +
+            (u.streak > 0 ? '<span>🔥 <b>' + u.streak + '</b>д</span>' : '') +
+          '</div>' +
+          '<button class="btn btn-ghost btn-sm" onclick="openUserDetail(\'' +
+            esc(u.userName).replace(/'/g, "\\'") + '\')">Профиль</button>' +
+        '</div>';
+      });
+
+      if (STATE.users.hasMore) {
+        html += '<button class="btn btn-ghost" onclick="loadMoreUsers()">Показать ещё</button>';
+      }
+    }
+
+    app.innerHTML = html;
+
+    var inp = document.getElementById('searchUsers');
+    if (inp) {
+      var timer;
+      inp.addEventListener('input', function() {
+        clearTimeout(timer);
+        timer = setTimeout(function() {
+          STATE.users.search = inp.value;
+          STATE.users.page = 1;
+          renderUsers(app);
+        }, 500);
+      });
+    }
+  }).catch(function(err) {
+    app.innerHTML = '<div class="error-box">' + esc(err.message || err) + '</div>';
+  });
+}
+
+function loadMoreUsers() {
+  STATE.users.page++;
+  api('admin_getUsers', STATE.users.page, STATE.users.search).then(function(res) {
+    if (res && res.ok) {
+      STATE.users.list = STATE.users.list.concat(res.users || []);
+      STATE.users.hasMore = res.hasMore;
+      renderUsers(document.getElementById('app'));
+    }
+  });
+}
+
+function openUserDetail(userName) {
+  showModal('<div class="loader"><div class="spinner"></div>Загрузка...</div>');
+
+  api('admin_getUserDetail', userName).then(function(res) {
+    if (!res || !res.ok) {
+      document.getElementById('modalBody').innerHTML =
+        '<div class="error-box">' + esc(res && res.error) + '</div>';
+      return;
+    }
+
+    var u = res.user;
+    var xp = u.xp || {};
+
+    var achs = (u.achievements || []).map(function(a) {
+      return '<span style="display:inline-block;padding:4px 8px;background:var(--bg3);border-radius:8px;font-size:11px;margin:2px">' +
+        esc(a.name) + '</span>';
+    }).join('');
+
+    var html = '<h2 style="position:relative">' + esc(u.userName) +
+      '<button class="modal-close" onclick="closeModal()">×</button></h2>';
+
+    html += '<div class="card">' +
+      '<div class="row"><span class="label">Chat ID</span><span class="value">' + esc(u.chatId || '—') + '</span></div>' +
+      '<div class="row"><span class="label">Username</span><span class="value">' + (u.username ? '@' + esc(u.username) : '—') + '</span></div>' +
+      '<div class="row"><span class="label">Место</span><span class="value">' + esc(u.place) + '</span></div>' +
+      '<div class="row"><span class="label">Прогнозов</span><span class="value">' + u.preds + '</span></div>' +
+      '<div class="row"><span class="label">Очков</span><span class="value">' + u.points + '</span></div>' +
+      '<div class="row"><span class="label">XP / LVL</span><span class="value">' + (xp.totalXP || 0) + ' / ' + (xp.level || 0) + '</span></div>' +
+      '<div class="row"><span class="label">Streak</span><span class="value">🔥 ' + (xp.streak || 0) + ' дн.</span></div>' +
+      '<div class="row"><span class="label">Точных</span><span class="value">' + (xp.exactScores || 0) + '</span></div>' +
+    '</div>';
+
+    html += '<div class="card"><h3>🏅 Достижения</h3>' +
+      (achs || '<div class="empty">Нет</div>') +
+    '</div>';
+
+    html += '<div class="card"><h3>⚙️ Действия</h3>' +
+      '<button class="btn" onclick="recalcUser(\'' + esc(u.userName).replace(/'/g, "\\'") + '\')">🔃 Пересчитать очки/XP/ачивки</button>' +
+    '</div>';
+
+    document.getElementById('modalBody').innerHTML = html;
+  });
+}
+
+function recalcUser(userName) {
+  if (!confirm('Пересчитать все данные для ' + userName + '?')) return;
+  document.getElementById('modalBody').innerHTML =
+    '<div class="loader"><div class="spinner"></div>Пересчёт...</div>';
+
+  api('admin_recalcUser', userName).then(function(r) {
+    alert(r && r.ok ? '✅ Готово' : '❌ ' + (r && r.error));
+    closeModal();
+    renderUsers(document.getElementById('app'));
+  });
+}
+
+// ============================================================
+//  МАТЧИ
+// ============================================================
+function renderMatches(app) {
+  app.innerHTML = '<div class="loader"><div class="spinner"></div>Загрузка...</div>';
+
+  api('admin_getMatches', STATE.matches.league, STATE.matches.tour).then(function(res) {
+    if (!res || !res.ok) {
+      app.innerHTML = '<div class="error-box">' + esc(res && res.error) + '</div>';
+      return;
+    }
+
+    STATE.matches.list = res.matches || [];
+
+    var leagues = [
+      {code:'all', name:'Все лиги'},
+      {code:'PL', name:'PL'}, {code:'CL', name:'CL'}, {code:'PD', name:'PD'},
+      {code:'SA', name:'SA'}, {code:'FL1', name:'FL1'}, {code:'ELC', name:'ELC'},
+      {code:'PPL', name:'PPL'}, {code:'UNL', name:'UNL'}
+    ];
+
+    var html = '<div class="card" style="padding:12px">' +
+      '<select id="selLeague">' +
+        leagues.map(function(l) {
+          return '<option value="' + l.code + '"' +
+            (l.code === STATE.matches.league ? ' selected' : '') + '>' + l.name + '</option>';
+        }).join('') +
+      '</select>' +
+      '<input type="number" id="inpTour" placeholder="Тур (пусто = все)" value="' +
+        esc(STATE.matches.tour) + '">' +
+      '<button class="btn" onclick="applyMatchFilter()">Применить</button>' +
+    '</div>';
+
+    if (!STATE.matches.list.length) {
+      html += '<div class="empty">Матчей не найдено</div>';
+    } else {
+      STATE.matches.list.forEach(function(m) {
+        var scoreHtml = m.realScore
+          ? '<div class="score">' + esc(m.realScore) + ' ✅</div>'
+          : '<div class="score" style="color:var(--hint)">— : — ⏳</div>';
+
+        html += '<div class="match-card">' +
+          '<div class="teams">' + esc(m.matchName) + '</div>' +
+          '<div class="meta">' + esc(m.leagueName) + ' · Тур ' + (m.tourNum || '?') +
+            (m.timeStr ? ' · ' + esc(m.timeStr) : '') + '</div>' +
+          scoreHtml +
+          '<div class="meta">' + m.predCount + ' прогнозов</div>' +
+          '<div class="actions">' +
+            '<button class="btn btn-ghost btn-sm" onclick="editMatchScore(' +
+              m.id + ', \'' + esc(m.matchName).replace(/'/g, "\\'") + '\', \'' +
+              esc(m.realScore || '') + '\')">✏️ Счёт</button>' +
+            '<button class="btn btn-ghost btn-sm" onclick="viewMatchPreds(\'' +
+              esc(m.leagueCode) + '\', \'' + esc(m.matchNorm).replace(/'/g, "\\'") + '\', \'' +
+              esc(m.matchName).replace(/'/g, "\\'") + '\')">👁 Прогнозы</button>' +
+          '</div>' +
+        '</div>';
+      });
+    }
+
+    app.innerHTML = html;
+  }).catch(function(err) {
+    app.innerHTML = '<div class="error-box">' + esc(err.message || err) + '</div>';
+  });
+}
+
+function applyMatchFilter() {
+  STATE.matches.league = document.getElementById('selLeague').value;
+  STATE.matches.tour = document.getElementById('inpTour').value;
+  renderMatches(document.getElementById('app'));
+}
+
+function editMatchScore(matchId, matchName, currentScore) {
+  var html = '<h2 style="position:relative">Изменить счёт<button class="modal-close" onclick="closeModal()">×</button></h2>' +
+    '<div class="card"><div class="row"><span class="label">Матч</span><span class="value">' +
+      esc(matchName) + '</span></div>' +
+      '<div class="row"><span class="label">Текущий</span><span class="value">' +
+      (esc(currentScore) || '—') + '</span></div>' +
+    '</div>' +
+    '<div class="card"><h3>Новый счёт</h3>' +
+      '<input type="text" id="newScore" placeholder="2-1" value="' + esc(currentScore) + '">' +
+      '<div style="font-size:11px;color:var(--hint);margin-bottom:12px">' +
+        'Формат: X-Y (например 2-1). После сохранения пересчитаются очки всех игроков.' +
+      '</div>' +
+      '<button class="btn" onclick="saveMatchScore(' + matchId + ')">💾 Сохранить</button>' +
+    '</div>';
+  showModal(html);
+}
+
+function saveMatchScore(matchId) {
+  var s = document.getElementById('newScore').value.trim();
+  if (!/^\d+-\d+$/.test(s)) { alert('Неверный формат'); return; }
+
+  document.getElementById('modalBody').innerHTML =
+    '<div class="loader"><div class="spinner"></div>Сохранение...</div>';
+
+  api('admin_saveMatchScore', matchId, s).then(function(r) {
+    alert(r && r.ok ? '✅ Сохранено' : '❌ ' + (r && r.error));
+    closeModal();
+    renderMatches(document.getElementById('app'));
+  });
+}
+
+function viewMatchPreds(leagueCode, matchNorm, matchName) {
+  showModal('<div class="loader"><div class="spinner"></div>Загрузка...</div>');
+
+  api('admin_getMatchPredictions', leagueCode, matchNorm).then(function(res) {
+    if (!res || !res.ok) {
+      document.getElementById('modalBody').innerHTML =
+        '<div class="error-box">' + esc(res && res.error) + '</div>';
+      return;
+    }
+
+    var html = '<h2 style="position:relative">' + esc(matchName) +
+      '<button class="modal-close" onclick="closeModal()">×</button></h2>';
+
+    if (res.realScore) {
+      html += '<div class="card" style="padding:12px;text-align:center">' +
+        '<div style="font-size:12px;color:var(--hint)">Реальный счёт</div>' +
+        '<div style="font-size:24px;font-weight:800;color:var(--win)">' +
+        esc(res.realScore) + '</div></div>';
+    }
+
+    if (!res.predictions.length) {
+      html += '<div class="empty">Прогнозов нет</div>';
+    } else {
+      html += '<div class="card">';
+      res.predictions.forEach(function(p) {
+        var pts = p.points !== null ? p.points : '—';
+        var cls = p.points >= 3 ? 'ok' : (p.points === 1 ? 'warn' : (p.points === 0 ? 'err' : ''));
+        html += '<div class="row">' +
+          '<span class="label">' + esc(p.userName) + '</span>' +
+          '<span class="value">' + esc(p.score) + ' <span class="' + cls + '">+' + pts + '</span></span>' +
+        '</div>';
+      });
+      html += '</div>';
+    }
+
+    document.getElementById('modalBody').innerHTML = html;
+  });
+}
+
+// ============================================================
+//  ПРОГНОЗЫ
+// ============================================================
+function renderPredictions(app) {
+  app.innerHTML = '<div class="loader"><div class="spinner"></div>Загрузка...</div>';
+
+  api('admin_getPredictions', STATE.predictions.page, STATE.predictions.search)
+    .then(function(res) {
+    if (!res || !res.ok) {
+      app.innerHTML = '<div class="error-box">' + esc(res && res.error) + '</div>';
+      return;
+    }
+
+    STATE.predictions.list = res.predictions || [];
+    STATE.predictions.hasMore = res.hasMore;
+
+    var html = '<div class="card" style="padding:12px">' +
+      '<input type="text" id="searchPreds" placeholder="🔍 Поиск: игрок или матч" value="' +
+        esc(STATE.predictions.search) + '">' +
+    '</div>';
+
+    if (!STATE.predictions.list.length) {
+      html += '<div class="empty">Прогнозов не найдено</div>';
+    } else {
+      STATE.predictions.list.forEach(function(p) {
+        html += '<div class="user-card">' +
+          '<div class="name">' + esc(p.userName) + '</div>' +
+          '<div class="meta">' + esc(p.leagueName) + ' · ' + esc(fmtDate(p.savedAt)) + '</div>' +
+          '<div style="font-size:13px;margin-bottom:4px">' + esc(p.matchName) + '</div>' +
+          '<div style="font-size:13px">Прогноз: <b>' + esc(p.outcome) + ' ' + esc(p.score) + '</b></div>' +
+          '<div class="actions" style="display:flex;gap:8px;margin-top:8px">' +
+            '<button class="btn btn-ghost btn-sm" onclick="editPrediction(' +
+              p.id + ', \'' + esc(p.outcome) + '\', \'' + esc(p.score) + '\')">✏️ Изменить</button>' +
+            '<button class="btn btn-danger btn-sm" onclick="deletePrediction(' + p.id + ')">🗑 Удалить</button>' +
+          '</div>' +
+        '</div>';
+      });
+
+      if (STATE.predictions.hasMore) {
+        html += '<button class="btn btn-ghost" onclick="loadMorePreds()">Показать ещё</button>';
+      }
+    }
+
+    app.innerHTML = html;
+
+    var inp = document.getElementById('searchPreds');
+    if (inp) {
+      var timer;
+      inp.addEventListener('input', function() {
+        clearTimeout(timer);
+        timer = setTimeout(function() {
+          STATE.predictions.search = inp.value;
+          STATE.predictions.page = 1;
+          renderPredictions(app);
+        }, 500);
+      });
+    }
+  });
+}
+
+function loadMorePreds() {
+  STATE.predictions.page++;
+  api('admin_getPredictions', STATE.predictions.page, STATE.predictions.search)
+    .then(function(res) {
+    if (res && res.ok) {
+      STATE.predictions.list = STATE.predictions.list.concat(res.predictions || []);
+      STATE.predictions.hasMore = res.hasMore;
+      renderPredictions(document.getElementById('app'));
+    }
+  });
+}
+
+function deletePrediction(id) {
+  if (!confirm('Удалить прогноз #' + id + '?')) return;
+  api('admin_deletePrediction', id).then(function(r) {
+    alert(r && r.ok ? '✅ Удалено' : '❌ ' + (r && r.error));
+    renderPredictions(document.getElementById('app'));
+  });
+}
+
+function editPrediction(id, currentOutcome, currentScore) {
+  var html = '<h2 style="position:relative">Изменить прогноз #' + id +
+    '<button class="modal-close" onclick="closeModal()">×</button></h2>' +
+    '<div class="card">' +
+      '<select id="editOutcome">' +
+        ['П1','Ничья','П2'].map(function(o) {
+          return '<option value="' + o + '"' +
+            (o === currentOutcome ? ' selected' : '') + '>' + o + '</option>';
+        }).join('') +
+      '</select>' +
+      '<input type="text" id="editScore" placeholder="2-1" value="' + esc(currentScore) + '">' +
+      '<button class="btn" onclick="savePred(' + id + ')">💾 Сохранить</button>' +
+    '</div>';
+  showModal(html);
+}
+
+function savePred(id) {
+  var outcome = document.getElementById('editOutcome').value;
+  var score = document.getElementById('editScore').value.trim();
+  if (!/^\d+-\d+$/.test(score)) { alert('Неверный счёт'); return; }
+
+  api('admin_editPrediction', id, outcome, score).then(function(r) {
+    alert(r && r.ok ? '✅ Готово' : '❌ ' + (r && r.error));
+    closeModal();
+    renderPredictions(document.getElementById('app'));
+  });
+}
+
+// ============================================================
+//  ОБНОВЛЕНИЕ
+// ============================================================
+function renderUpdate(app) {
+  app.innerHTML = '<div class="loader"><div class="spinner"></div>Загрузка...</div>';
+
+  Promise.all([
+    api('admin_getChainStatus'),
+    api('admin_getTriggers')
+  ]).then(function([chainRes, trRes]) {
+    var chain = chainRes.ok ? chainRes.chain : null;
+    var triggers = trRes.ok ? trRes.triggers : [];
+
+    STATE.chain = chain;
+    STATE.triggers = triggers;
+
+    var html = '';
+
+    html += '<div class="card"><h3>🔄 Текущая цепочка</h3>';
+    if (!chain) {
+      html += '<div class="empty">Не запущена</div>';
+    } else {
+      var age = Math.round((Date.now() - new Date(chain.startedAt).getTime()) / 60000);
+      html += '<div class="row"><span class="label">Этап</span><span class="value">' +
+        esc(chain.stage) + '</span></div>';
+      html += '<div class="row"><span class="label">Лига</span><span class="value">' +
+        (chain.currentIndex || 0) + '/' + (chain.leagues || []).length + ' → ' +
+        esc((chain.leagues || [])[chain.currentIndex] || '—') + '</span></div>';
+      html += '<div class="row"><span class="label">Идёт</span><span class="value">' +
+        age + ' мин</span></div>';
+      html += '<div class="btn-row">' +
+        '<button class="btn btn-ghost btn-sm" onclick="chainAction(\'continue\')">▶️ Продолжить</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="chainAction(\'reset\')">⏹ Сбросить</button>' +
+      '</div>';
+    }
+    html += '</div>';
+
+    html += '<div class="card"><h3>🎯 Ручной запуск</h3>' +
+      '<button class="btn" onclick="quickAction(\'update\')">🔄 updateAllLeagues</button>' +
+      '<div class="btn-row">' +
+        '<button class="btn btn-ghost btn-sm" onclick="quickAction(\'sync\')">📤 Только sync</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="quickAction(\'rebuild\')">🔃 Пересчёт</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="quickAction(\'cache\')">🧹 Кэш</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="quickAction(\'check\')">🧪 Проверка</button>' +
+      '</div>' +
+    '</div>';
+
+    html += '<div class="card"><h3>⏰ Триггеры (' + triggers.length + ')</h3>';
+    if (!triggers.length) {
+      html += '<div class="empty">Нет активных триггеров</div>';
+    } else {
+      triggers.forEach(function(t) {
+        html += '<div class="row"><span class="label">' + esc(t.fn) + '</span>' +
+          '<span class="value" style="font-size:11px">' + esc(t.type) + '</span></div>';
+      });
+      html += '<div class="btn-row" style="margin-top:8px">' +
+        '<button class="btn btn-ghost btn-sm" onclick="triggersAction(\'recreate\')">♻️ Пересоздать</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="triggersAction(\'deleteAll\')">🗑 Удалить все</button>' +
+      '</div>';
+    }
+    html += '</div>';
+
+    app.innerHTML = html;
+  });
+}
+
+function chainAction(action) {
+  if (action === 'reset' && !confirm('Сбросить цепочку обновления?')) return;
+  var fn = action === 'continue' ? 'admin_continueChain' : 'admin_resetChain';
+  api(fn).then(function(r) {
+    alert(r && r.ok ? '✅ Готово' : '❌ ' + (r && r.error));
+    renderUpdate(document.getElementById('app'));
+  });
+}
+
+function triggersAction(action) {
+  if (action === 'deleteAll' && !confirm('Удалить ВСЕ триггеры? Бот перестанет работать автоматически.')) return;
+  var fn = action === 'recreate' ? 'admin_recreateTriggers' : 'admin_deleteAllTriggers';
+  api(fn).then(function(r) {
+    alert(r && r.ok ? '✅ Готово' : '❌ ' + (r && r.error));
+    renderUpdate(document.getElementById('app'));
+  });
+}
+
+// ============================================================
+//  РАССЫЛКА
+// ============================================================
+function renderBroadcast(app) {
+  app.innerHTML = '<div class="loader"><div class="spinner"></div>Загрузка...</div>';
+
+  api('admin_getBroadcastStats').then(function(res) {
+    var stats = res && res.ok ? res : { total: 0, withPreds: 0 };
+    STATE.broadcastStats = stats;
+
+    var html = '<div class="card"><h3>📢 Новая рассылка</h3>' +
+      '<div class="row"><span class="label">Всего игроков</span>' +
+        '<span class="value">' + stats.total + '</span></div>' +
+      '<div class="row"><span class="label">С прогнозами</span>' +
+        '<span class="value">' + stats.withPreds + '</span></div>' +
+    '</div>';
+
+    html += '<div class="card"><h3>Кому</h3>' +
+      '<select id="bcTarget">' +
+        '<option value="all">Все (' + stats.total + ')</option>' +
+        '<option value="with_preds">Только с прогнозами (' + stats.withPreds + ')</option>' +
+      '</select>' +
+    '</div>';
+
+    html += '<div class="card"><h3>Сообщение</h3>' +
+      '<textarea id="bcText" placeholder="Текст сообщения..."></textarea>' +
+      '<div style="font-size:11px;color:var(--hint);margin-bottom:8px">' +
+        'Markdown поддерживается: *жирный*, _курсив_, `код`' +
+      '</div>' +
+      '<button class="btn" onclick="sendBroadcast()">📤 Отправить</button>' +
+    '</div>';
+
+    app.innerHTML = html;
+  });
+}
+
+function sendBroadcast() {
+  var target = document.getElementById('bcTarget').value;
+  var text = document.getElementById('bcText').value.trim();
+
+  if (!text) { alert('Введите текст'); return; }
+  if (!confirm('Отправить сообщение группе "' + target + '"?')) return;
+
+  var app = document.getElementById('app');
+  app.innerHTML = '<div class="loader"><div class="spinner"></div>Отправка...</div>';
+
+  api('admin_broadcast', target, text).then(function(r) {
+    if (r && r.ok) {
+      alert('✅ Отправлено: ' + r.sent + '/' + r.total +
+            (r.failed > 0 ? '\n❌ Ошибок: ' + r.failed : ''));
+    } else {
+      alert('❌ ' + (r && r.error));
+    }
+    renderBroadcast(app);
+  });
+}
+
+// ============================================================
+//  АНАЛИТИКА
+// ============================================================
+function renderAnalytics(app) {
+  app.innerHTML = '<div class="loader"><div class="spinner"></div>Загрузка...</div>';
+
+  api('admin_getAnalytics', 7).then(function(res) {
+    if (!res || !res.ok) {
+      app.innerHTML = '<div class="error-box">' + esc(res && res.error) + '</div>';
+      return;
+    }
+
+    var html = '<div class="card"><h3>📊 За ' + res.days + ' дней</h3>' +
+      '<div class="metric-grid">' +
+        '<div class="metric-box"><div class="num">' + res.totalPredictions + '</div>' +
+          '<div class="lbl">Прогнозов</div></div>' +
+        '<div class="metric-box"><div class="num">' + Object.keys(res.byUser).length + '</div>' +
+          '<div class="lbl">Игроков</div></div>' +
+        '<div class="metric-box"><div class="num">' + Object.keys(res.byLeague).length + '</div>' +
+          '<div class="lbl">Лиг</div></div>' +
+      '</div>' +
+    '</div>';
+
+    if (res.top && res.top.length) {
+      html += '<div class="card"><h3>🏆 Топ-5 игроков (по очкам)</h3>';
+      res.top.forEach(function(t, i) {
+        html += '<div class="row"><span class="label">' + (i+1) + '. ' + esc(t.name) + '</span>' +
+          '<span class="value">' + t.points + ' очк</span></div>';
+      });
+      html += '</div>';
+    }
+
+    if (Object.keys(res.byLeague).length) {
+      html += '<div class="card"><h3>🎯 По лигам</h3>';
+      var total = res.totalPredictions || 1;
+      Object.keys(res.byLeague).sort(function(a, b) {
+        return res.byLeague[b] - res.byLeague[a];
+      }).forEach(function(code) {
+        var cnt = res.byLeague[code];
+        var pct = Math.round(cnt / total * 100);
+        html += '<div class="row"><span class="label">' + code + '</span>' +
+          '<span class="value">' + cnt + ' (' + pct + '%)</span></div>';
+      });
+      html += '</div>';
+    }
+
+    app.innerHTML = html;
+  });
+}
+
+// ============================================================
+//  СТАРТ
+// ============================================================
+document.getElementById('nav').style.display = 'flex';
+updateNav();
+render();
+</script>
+</body>
+</html>
