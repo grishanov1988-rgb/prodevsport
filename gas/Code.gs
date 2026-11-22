@@ -3566,8 +3566,10 @@ function miniApp_getXPHistory(chatId, userName) {
 
 // ============================================================
 //  SHA-256 / HMAC-SHA256 НА ЧИСТОМ JS
-//  Нужен потому, что Utilities.computeHmacSha256Signature в GAS
-//  не принимает байтовый ключ (а для initData нужен двойной HMAC).
+//  Полностью самодостаточно: Utilities НЕ используется
+//  (в GAS Utilities не принимает байтовый ключ для двойного HMAC,
+//  а порядок аргументов отличается от документации — только pure JS
+//  даёт гарантированно одинаковый результат везде).
 // ============================================================
 (function () {
   var K = [
@@ -3583,14 +3585,14 @@ function miniApp_getXPHistory(chatId, userName) {
 
   function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
 
-  // Вход: массив байт (0-255), выход: массив из 32 байт
+  // Вход: массив байт, выход: массив из 32 байт
   function sha256Bytes_(msg) {
     var h = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
     var bitLen = msg.length * 8;
     var withPad = msg.slice();
     withPad.push(0x80);
     while (withPad.length % 64 !== 56) withPad.push(0);
-    for (var i = 7; i >= 0; i--) withPad.push((bitLen / Math.pow(2, i * 8)) & 0xff);
+    for (var i = 7; i >= 0; i--) withPad.push(Math.floor(bitLen / Math.pow(2, i * 8)) & 0xff);
 
     for (var off = 0; off < withPad.length; off += 64) {
       var w = new Array(64);
@@ -3623,36 +3625,46 @@ function miniApp_getXPHistory(chatId, userName) {
     return out;
   }
 
-  // HMAC-SHA256: key — массив байт, message — строка UTF-8; результат — hex-строка
-  function hmacSha256Hex_(keyBytes, message) {
+  // UTF-8 байты строки
+  function utf8Bytes_(str) {
+    var out = [];
+    for (var m = 0; m < str.length; m++) {
+      var code = str.charCodeAt(m);
+      if (code < 0x80) out.push(code);
+      else if (code < 0x800) { out.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f)); }
+      else if (code >= 0xd800 && code <= 0xdbff) {
+        var next = str.charCodeAt(++m);
+        var u = 0x10000 + ((code & 0x3ff) << 10) + (next & 0x3ff);
+        out.push(0xf0 | (u >> 18), 0x80 | ((u >> 12) & 0x3f), 0x80 | ((u >> 6) & 0x3f), 0x80 | (u & 0x3f));
+      }
+      else { out.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f)); }
+    }
+    return out;
+  }
+
+  // HMAC-SHA256: keyBytes и messageBytes — массивы байт; результат — 32 байта
+  function hmacSha256Bytes_(keyBytes, messageBytes) {
     var blockSize = 64;
     var key = keyBytes.slice();
     if (key.length > blockSize) key = sha256Bytes_(key);
     while (key.length < blockSize) key.push(0);
     var o = [], i = [];
     for (var n = 0; n < blockSize; n++) { o.push(key[n] ^ 0x5c); i.push(key[n] ^ 0x36); }
-    var msgBytes = [];
-    for (var m = 0; m < message.length; m++) {
-      var code = message.charCodeAt(m);
-      if (code < 0x80) msgBytes.push(code);
-      else if (code < 0x800) { msgBytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f)); }
-      else if (code >= 0xd800 && code <= 0xdbff) {
-        var next = message.charCodeAt(++m);
-        var u = 0x10000 + ((code & 0x3ff) << 10) + (next & 0x3ff);
-        msgBytes.push(0xf0 | (u >> 18), 0x80 | ((u >> 12) & 0x3f), 0x80 | ((u >> 6) & 0x3f), 0x80 | (u & 0x3f));
-      }
-      else { msgBytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f)); }
-    }
-    var inner = sha256Bytes_(i.concat(msgBytes));
-    var outer = sha256Bytes_(o.concat(inner));
+    return sha256Bytes_(o.concat(sha256Bytes_(i.concat(messageBytes))));
+  }
+
+  // HMAC-SHA256: keyBytes — массив байт, message — строка; результат — hex
+  function hmacSha256Hex_(keyBytes, message) {
+    var outer = hmacSha256Bytes_(keyBytes, utf8Bytes_(message));
     var hex = '';
     for (var q = 0; q < outer.length; q++) hex += (outer[q] < 16 ? '0' : '') + outer[q].toString(16);
     return hex;
   }
 
-  // Экспорт в глобальную область GAS
   globalThis.sha256Bytes_ = sha256Bytes_;
+  globalThis.hmacSha256Bytes_ = hmacSha256Bytes_;
   globalThis.hmacSha256Hex_ = hmacSha256Hex_;
+  globalThis.utf8Bytes_ = utf8Bytes_;
 })();
 
 // ============================================================
@@ -3729,8 +3741,7 @@ function handleApiRequest_(data) {
   return jsonOut_(safeCall_(fn, finalArgs));
 }
 
-// Валидация Telegram initData: HMAC-SHA256 через чистый JS (hmacSha256Hex_),
-// т.к. Utilities не принимает байтовый ключ для двойного HMAC.
+// Валидация Telegram initData — полностью на pure JS (без Utilities)
 function validateInitData_(initData) {
   if (!initData || !TOKEN) return null;
   try {
@@ -3748,9 +3759,9 @@ function validateInitData_(initData) {
       .map(function (k) { return k + '=' + params[k]; })
       .join('\n');
 
-    // secret = HMAC-SHA256(key="WebAppData", msg=TOKEN) — массив байт
-    const secretBytes = Utilities.computeHmacSha256Signature(TOKEN, 'WebAppData');
-    const computed = hmacSha256Hex_(secretBytes, checkString);
+    // secret = HMAC-SHA256(key="WebAppData", msg=TOKEN) — pure JS, массив байт
+    const secretKey = hmacSha256Bytes_(utf8Bytes_('WebAppData'), utf8Bytes_(TOKEN));
+    const computed = hmacSha256Hex_(secretKey, checkString);
 
     if (computed !== hash) {
       Logger.log('\u2b55 initData: невалидная подпись');
