@@ -3696,7 +3696,7 @@ function callServer(fn) {
   var args = Array.prototype.slice.call(arguments, 1);
   return new Promise(function(resolve, reject) {
     if (!fn) { reject(new Error('Имя функции не задано')); return; }
-    if (!window.API_URL || window.API_URL.indexOf('/exec') === -1) {
+    if (!window.API_URL || window.API_URL.indexOf('http') !== 0) {
       reject(new Error('API_URL не настроен в config.js'));
       return;
     }
