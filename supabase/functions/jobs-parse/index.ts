@@ -182,10 +182,23 @@ async function updateLeague(leagueCode: string) {
 
   const rows = matches.map((m) => toMatchRow(leagueCode, m));
 
+  // Дедуп по (league_code, match_norm): Postgres не принимает дубликаты
+  // constrained-значений внутри одного upsert-команды — берём первую запись
+  const seenNorm = new Set<string>();
+  const uniqRows = rows.filter((r) => {
+    const k = `${r.league_code}::${r.match_norm}`;
+    if (seenNorm.has(k)) return false;
+    seenNorm.add(k);
+    return true;
+  });
+  if (uniqRows.length < rows.length) {
+    console.log(`⚠️ ${leagueCode}: ${rows.length - uniqRows.length} дублей match_norm отброшено`);
+  }
+
   // Upsert пачками по 200
   let upserted = 0;
   for (let b = 0; b < rows.length; b += 200) {
-    const chunk = rows.slice(b, b + 200);
+    const chunk = uniqRows.slice(b, b + 200);
     try {
       await db('matches?on_conflict=league_code,match_norm', {
         method: 'post',

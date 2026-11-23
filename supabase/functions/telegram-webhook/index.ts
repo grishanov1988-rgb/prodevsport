@@ -88,7 +88,8 @@ async function setupRoute(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const key = url.searchParams.get('key') || '';
   if (!ADMIN_SECRET || key !== ADMIN_SECRET) return json({ ok: false, error: 'unauthorized' }, 401);
-  const selfUrl = `${url.origin}/functions/v1/telegram-webhook`;
+  // Edge-функции видят внутренний http:// origin — принудительно https
+  const selfUrl = `https://${url.host}/functions/v1/telegram-webhook`;
   try {
     const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`, {
       method: 'POST',
