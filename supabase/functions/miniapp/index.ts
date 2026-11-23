@@ -11,6 +11,7 @@ import { validateRequest, applyIdentity, requireAdmin } from '../_shared/auth.ts
 import * as core from './handlers-core.ts';
 import * as gam from './handlers-gamification.ts';
 import * as priv from './handlers-private.ts';
+import * as shop from './handlers-shop.ts';
 
 const json = (body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -47,15 +48,25 @@ const HANDLERS: Record<string, (...args: any[]) => Promise<unknown> | unknown> =
   miniApp_getPrivateLeagueRating: priv.getPrivateLeagueRating,
   miniApp_leavePrivateLeague: priv.leavePrivateLeague,
   miniApp_deletePrivateLeague: priv.deletePrivateLeague,
+
+  // --- Магазин (этап 5) ---
+  miniApp_getShop: shop.getShop,
+  miniApp_openBox: shop.openBox,
+  miniApp_claimDailyBox: shop.claimDailyBox,
+  miniApp_getCollection: shop.getCollection,
+  miniApp_getMatchHighlights: shop.getMatchHighlights,
+  miniApp_buyJoker: shop.buyJoker,
+  miniApp_getJokerStatus: shop.getJokerStatus,
+  miniApp_getWheelStatus: shop.getWheelStatus,
+  miniApp_spinWheel: shop.spinWheel,
+  miniApp_sellCard: shop.sellCard,
+  miniApp_getXPHistory: shop.getXPHistory,
 };
 
 // Функции будущих этапов — явные заглушки (чтобы фронт получал осмысленный ответ)
 const STUBBED = new Set([
-  'miniApp_getShop', 'miniApp_openBox', 'miniApp_claimDailyBox', 'miniApp_getCollection',
-  'miniApp_getMatchHighlights', 'miniApp_buyJoker', 'miniApp_getJokerStatus',
   'miniApp_getTeamBuilder', 'miniApp_saveTeam', 'miniApp_getMyTeam',
   'miniApp_startTeamBattle', 'miniApp_getBattleHistory',
-  'miniApp_getWheelStatus', 'miniApp_spinWheel', 'miniApp_sellCard', 'miniApp_getXPHistory',
 ]);
 
 Deno.serve(async (req) => {
