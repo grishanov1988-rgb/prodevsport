@@ -1,0 +1,18 @@
+project_id = "wtiiokkgemyozclnallj"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[functions.telegram-webhook]
+verify_jwt = false
+
+[functions.miniapp]
+verify_jwt = false
+
+[functions.jobs-parse]
+verify_jwt = false
+
+[functions.jobs-notify]
+verify_jwt = false
