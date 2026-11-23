@@ -3,9 +3,8 @@
 //  Файл публичный — НЕ храните здесь секреты!
 // ============================================================
 
-// URL деплоя Google Apps Script (заканчивается на /exec).
-// Берётся после «Развернуть → Управление развёртываниями» в GAS.
-const API_URL = "https://script.google.com/macros/s/ВАШ_DEPLOYMENT_ID/exec";
+// URL Supabase Edge Function (заменил Google Apps Script)
+const API_URL = "https://wtiiokkgemyozclnallj.supabase.co/functions/v1/miniapp";
 
 // Username вашего бота без @ — для ссылок-приглашений в приватные лиги
 const BOT_USERNAME = "devsport_bot";
