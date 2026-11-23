@@ -12,6 +12,7 @@ import * as core from './handlers-core.ts';
 import * as gam from './handlers-gamification.ts';
 import * as priv from './handlers-private.ts';
 import * as shop from './handlers-shop.ts';
+import * as team from './handlers-team.ts';
 
 const json = (body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -61,13 +62,17 @@ const HANDLERS: Record<string, (...args: any[]) => Promise<unknown> | unknown> =
   miniApp_spinWheel: shop.spinWheel,
   miniApp_sellCard: shop.sellCard,
   miniApp_getXPHistory: shop.getXPHistory,
+
+  // --- Team Builder + битвы (этап 6) ---
+  miniApp_getTeamBuilder: team.getTeamBuilder,
+  miniApp_saveTeam: team.saveTeam,
+  miniApp_getMyTeam: team.getMyTeam,
+  miniApp_startTeamBattle: team.startTeamBattle,
+  miniApp_getBattleHistory: team.getBattleHistory,
 };
 
 // Функции будущих этапов — явные заглушки (чтобы фронт получал осмысленный ответ)
-const STUBBED = new Set([
-  'miniApp_getTeamBuilder', 'miniApp_saveTeam', 'miniApp_getMyTeam',
-  'miniApp_startTeamBattle', 'miniApp_getBattleHistory',
-]);
+const STUBBED = new Set([] as string[]);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
