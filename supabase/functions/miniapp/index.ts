@@ -10,6 +10,7 @@
 import { validateRequest, applyIdentity, requireAdmin } from '../_shared/auth.ts';
 import * as core from './handlers-core.ts';
 import * as gam from './handlers-gamification.ts';
+import * as priv from './handlers-private.ts';
 
 const json = (body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -35,13 +36,21 @@ const HANDLERS: Record<string, (...args: any[]) => Promise<unknown> | unknown> =
   // --- Геймификация (этап 4) ---
   miniApp_getGamification: gam.getGamification,
   miniApp_claimTask: gam.claimTask,
+
+  // --- Приватные лиги (этап 3) ---
+  miniApp_createPrivateLeague: priv.createPrivateLeague,
+  miniApp_joinPrivateLeague: priv.joinPrivateLeague,
+  miniApp_getMyPrivateLeagues: priv.getMyPrivateLeagues,
+  miniApp_getAvailableMatchesForLeague: priv.getAvailableMatchesForLeague,
+  miniApp_addMatchesToLeague: priv.addMatchesToLeague,
+  miniApp_getLeagueMatchesList: priv.getLeagueMatchesList,
+  miniApp_getPrivateLeagueRating: priv.getPrivateLeagueRating,
+  miniApp_leavePrivateLeague: priv.leavePrivateLeague,
+  miniApp_deletePrivateLeague: priv.deletePrivateLeague,
 };
 
 // Функции будущих этапов — явные заглушки (чтобы фронт получал осмысленный ответ)
 const STUBBED = new Set([
-  'miniApp_createPrivateLeague', 'miniApp_joinPrivateLeague', 'miniApp_getMyPrivateLeagues',
-  'miniApp_getAvailableMatchesForLeague', 'miniApp_addMatchesToLeague', 'miniApp_getLeagueMatchesList',
-  'miniApp_getPrivateLeagueRating', 'miniApp_leavePrivateLeague', 'miniApp_deletePrivateLeague',
   'miniApp_getShop', 'miniApp_openBox', 'miniApp_claimDailyBox', 'miniApp_getCollection',
   'miniApp_getMatchHighlights', 'miniApp_buyJoker', 'miniApp_getJokerStatus',
   'miniApp_getTeamBuilder', 'miniApp_saveTeam', 'miniApp_getMyTeam',
