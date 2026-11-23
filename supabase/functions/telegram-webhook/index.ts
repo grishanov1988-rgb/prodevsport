@@ -5,13 +5,13 @@
 // ============================================================
 
 import { db, upsert } from '../_shared/db.ts';
-import { ADMIN_SECRET, ADMIN_CHAT_ID, ADMIN_URL, MINIAPP_URL } from '../_shared/config.ts';
+import { ADMIN_SECRET, ADMIN_CHAT_ID, ADMIN_URL, MINIAPP_URL, BOT_TOKEN } from '../_shared/config.ts';
 import { sendText, sendWebAppMenu, answerCallbackQuery } from '../_shared/telegram.ts';
 import { buildRating } from '../_shared/core.ts';
 import { escapeMd, enc } from '../_shared/util.ts';
 
-const json = (obj: unknown) =>
-  new Response(JSON.stringify(obj), { headers: { 'Content-Type': 'application/json' } });
+const json = (obj: unknown, status = 200) =>
+  new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
 
 async function isDuplicate(updateId: number): Promise<boolean> {
   try {
@@ -82,7 +82,32 @@ async function showRules(chatId: number): Promise<void> {
   await sendText(chatId, 'Правила игры\n\nУгадан исход: +1\nУгадана разница: +3\nТочный счет: +5\n\nПрогноз - до начала матча.');
 }
 
+// GET /?key=<ADMIN_SECRET> — установить webhook на этот же хост
+// (нужно один раз после деплоя; песочницы с заблокированным api.telegram.org не требуются)
+async function setupRoute(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  const key = url.searchParams.get('key') || '';
+  if (!ADMIN_SECRET || key !== ADMIN_SECRET) return json({ ok: false, error: 'unauthorized' }, 401);
+  const selfUrl = `${url.origin}/functions/v1/telegram-webhook`;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: selfUrl,
+        drop_pending_updates: true,
+        allowed_updates: ['message', 'callback_query'],
+      }),
+    });
+    const data = await res.json();
+    return json({ ok: !!data.ok, selfUrl, telegram: data });
+  } catch (e: any) {
+    return json({ ok: false, error: e.message, selfUrl });
+  }
+}
+
 Deno.serve(async (req) => {
+  if (req.method === 'GET') return setupRoute(req);
   if (req.method !== 'POST') return json({ ok: true });
 
   let data: any;
