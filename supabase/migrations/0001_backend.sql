@@ -78,6 +78,18 @@ create unique index if not exists notify_log_user_match_type_uidx on public.noti
 create unique index if not exists users_user_name_uidx on public.users (user_name);
 
 -- ------------------------------------------------------------
+--  Журнал событий админки (вместо Script Properties GAS)
+-- ------------------------------------------------------------
+create table if not exists public.admin_events (
+  id         bigint generated always as identity primary key,
+  type       text not null default 'info',
+  message    text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists admin_events_created_at_idx on public.admin_events (created_at desc);
+
+-- ------------------------------------------------------------
 --  Периодическая очистка: старые rate_limits и notify_log (>48ч)
 --  Требует включённого pg_cron (Database → Extensions → pg_cron)
 -- ============================================================

@@ -25,7 +25,7 @@ supabase/
     │   ├── index.ts            # POST {fn, args, initData} → валидация → вызов
     │   ├── handlers-core.ts    # bootstrap, матчи, прогнозы, рейтинг туров, стата
     │   └── handlers-gamification.ts  # getGamification, claimTask
-    ├── jobs-parse/             # (этап 7) парсеры football-data/TheSportsDB
+    ├── jobs-parse/             # (этап 7) парсеры football-data/TheSportsDB → Postgres
     ├── jobs-notify/            # (этап 7) уведомления за 3ч/1ч до матча
     └── admin/                  # (этап 8) admin_* обработчики
 ```
@@ -76,9 +76,9 @@ curl "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
 
 - [x] Этап 1: инфраструктура `_shared`, webhook бота, диспетчер miniapp
 - [x] Этап 2: ядро API — bootstrap, матчи, прогнозы, рейтинг туров, статистика, дашборд, уведомления
-- [x] Этап 4 (частично): XP-движок, задания, джокер, getGamification/claimTask
-- [ ] Этап 3: приватные лиги
-- [ ] Этап 5: магазин (боксы, колесо, джокер, коллекция, продажа)
-- [ ] Этап 6: Team Builder + батлы + GIPHY
-- [ ] Этап 7: парсеры + jobs (уведомления, пересчёт очков)
-- [ ] Этап 8: admin_* + переезд Admin.html на fetch
+- [x] Этап 3: приватные лиги
+- [x] Этап 4: XP-движок, задания, ачивки, джокер
+- [x] Этап 5: магазин (боксы, колесо, джокер, коллекция, продажа)
+- [x] Этап 6: Team Builder + батлы + GIPHY
+- [x] Этап 7: парсеры + jobs (уведомления, пересчёт очков)
+- [x] Этап 8: admin_* + переезд Admin.html на fetch (`admin/index.html` в репо)

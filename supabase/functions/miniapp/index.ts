@@ -13,6 +13,7 @@ import * as gam from './handlers-gamification.ts';
 import * as priv from './handlers-private.ts';
 import * as shop from './handlers-shop.ts';
 import * as team from './handlers-team.ts';
+import * as adm from '../admin/handlers.ts';
 
 const json = (body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -91,7 +92,37 @@ Deno.serve(async (req) => {
   if (fn.indexOf('admin_') === 0) {
     try {
       requireAdmin(data.key, data.chatId);
-      return json({ ok: false, error: 'admin handlers: этап 8 (пока не перенесены)' });
+      const adminHandlers: Record<string, (...a: any[]) => Promise<unknown>> = {
+        admin_getBootstrap: adm.adminGetBootstrap,
+        admin_getUsers: adm.adminGetUsers,
+        admin_getUserDetail: adm.adminGetUserDetail,
+        admin_recalcUser: adm.adminRecalcUser,
+        admin_getMatches: adm.adminGetMatches,
+        admin_saveMatchScore: adm.adminSaveMatchScore,
+        admin_getMatchPredictions: adm.adminGetMatchPredictions,
+        admin_getPredictions: adm.adminGetPredictions,
+        admin_deletePrediction: adm.adminDeletePrediction,
+        admin_editPrediction: adm.adminEditPrediction,
+        admin_startUpdate: adm.adminStartUpdate,
+        admin_runSync: adm.adminRunSync,
+        admin_rebuildUserPoints: adm.adminRebuildUserPoints,
+        admin_checkConnection: adm.adminCheckConnection,
+        admin_getChainStatus: adm.adminGetChainStatus,
+        admin_resetChain: adm.adminResetChain,
+        admin_continueChain: adm.adminContinueChain,
+        admin_getTriggers: adm.adminGetTriggers,
+        admin_deleteAllTriggers: adm.adminDeleteAllTriggers,
+        admin_recreateTriggers: adm.adminRecreateTriggers,
+        admin_clearCache: adm.adminClearCache,
+        admin_broadcast: adm.adminBroadcast,
+        admin_getBroadcastStats: adm.adminGetBroadcastStats,
+        admin_getAnalytics: adm.adminGetAnalytics,
+        admin_createBotTeams: adm.adminCreateBotTeams,
+        admin_deleteBotTeams: adm.adminDeleteBotTeams,
+      };
+      const h = adminHandlers[fn];
+      if (!h) return json({ ok: false, error: 'Unknown admin function: ' + fn });
+      return json(await h(...args));
     } catch (e: any) {
       return json({ ok: false, error: e.message || 'unauthorized' });
     }
