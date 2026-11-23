@@ -91,7 +91,7 @@ export async function openBox(_chatId: unknown, userName: unknown, boxCode: unkn
     const spend = await spendXP(clean, price, 'box_' + code);
     if (!spend.ok) return spend;
 
-    const catalog = await db('cards_catalog?is_active=eq.true&select=id,name,position,club,country,country_code,ovr,rarity,image_url') ?? [];
+    const catalog = await db('cards_catalog?is_active=eq.true&select=id,name,position,club,country,country_code,ovr,rarity,image_url,pac,sho,pas,dri,def,phy,is_gk') ?? [];
     const byRarity: Record<string, any[]> = {};
     catalog.forEach((c: any) => { (byRarity[c.rarity] = byRarity[c.rarity] || []).push(c); });
 
@@ -139,6 +139,7 @@ export async function openBox(_chatId: unknown, userName: unknown, boxCode: unkn
       cards: received.map((c) => ({
         id: c.id, name: c.name, position: c.position, club: c.club, country: c.country,
         countryCode: c.country_code, ovr: c.ovr, rarity: c.rarity, imageUrl: c.image_url,
+        pac: c.pac, sho: c.sho, pas: c.pas, dri: c.dri, def: c.def, phy: c.phy, isGk: c.is_gk,
       })),
     };
   } catch (e: any) { return { ok: false, error: e.message }; }
@@ -158,7 +159,7 @@ export async function claimDailyBox(_chatId: unknown, userName: unknown) {
     if (last === todayKey) return { ok: false, error: 'Сегодня уже забирали. Приходите завтра!', alreadyClaimed: true };
 
     const weights = { common: 60, rare: 25, epic: 10, legendary: 4, mythic: 1 };
-    const catalog = await db('cards_catalog?is_active=eq.true&select=id,name,position,club,country,country_code,ovr,rarity,image_url') ?? [];
+    const catalog = await db('cards_catalog?is_active=eq.true&select=id,name,position,club,country,country_code,ovr,rarity,image_url,pac,sho,pas,dri,def,phy,is_gk') ?? [];
     if (!catalog.length) return { ok: false, error: 'Каталог карточек пуст' };
 
     const byRarity: Record<string, any[]> = {};
@@ -205,6 +206,7 @@ export async function claimDailyBox(_chatId: unknown, userName: unknown) {
         id: card.id, name: card.name, position: card.position, club: card.club,
         country: card.country, countryCode: card.country_code, ovr: card.ovr,
         rarity: card.rarity, imageUrl: card.image_url,
+        pac: card.pac, sho: card.sho, pas: card.pas, dri: card.dri, def: card.def, phy: card.phy, isGk: card.is_gk,
       },
     };
   } catch (e: any) { return { ok: false, error: e.message }; }
@@ -224,6 +226,7 @@ export async function getCollection(_chatId: unknown, userName: unknown) {
       return {
         cardId: r.card_id, name: c.name, position: c.position, club: c.club, country: c.country,
         countryCode: c.country_code, ovr: c.ovr, rarity: c.rarity, imageUrl: c.image_url,
+        pac: c.pac, sho: c.sho, pas: c.pas, dri: c.dri, def: c.def, phy: c.phy, isGk: c.is_gk,
         quantity: Number(r.quantity) || 1, obtainedAt: r.first_obtained_at,
       };
     });

@@ -64,7 +64,7 @@ export async function getTeamBuilder(_chatId: unknown, userName: unknown) {
     const clean = String(userName || '').trim();
     if (!clean) return { ok: false, error: 'Не указан пользователь' };
 
-    const userCards = await db(`user_cards?user_name=eq.${enc(clean)}&select=card_id,quantity,cards_catalog(id,name,position,club,country,country_code,ovr,rarity,image_url)`) ?? [];
+    const userCards = await db(`user_cards?user_name=eq.${enc(clean)}&select=card_id,quantity,cards_catalog(id,name,position,club,country,country_code,ovr,rarity,image_url,pac,sho,pas,dri,def,phy,is_gk)`) ?? [];
 
     const cardsByGroup: Record<string, any[]> = { GK: [], DEF: [], MID: [], FWD: [], COACH: [] };
     userCards.forEach((r: any) => {
@@ -75,6 +75,7 @@ export async function getTeamBuilder(_chatId: unknown, userName: unknown) {
         cardId: r.card_id, name: c.name, position: c.position, club: c.club,
         country: c.country, countryCode: c.country_code, ovr: Number(c.ovr) || 0,
         rarity: c.rarity, group, quantity: Number(r.quantity) || 1,
+        pac: c.pac, sho: c.sho, pas: c.pas, dri: c.dri, def: c.def, phy: c.phy, isGk: c.is_gk,
       });
     });
     for (const g in cardsByGroup) cardsByGroup[g].sort((a, b) => b.ovr - a.ovr);
@@ -82,7 +83,7 @@ export async function getTeamBuilder(_chatId: unknown, userName: unknown) {
     const teamRows = await db(`user_teams?user_name=eq.${enc(clean)}`) ?? [];
     const team = teamRows[0] || null;
 
-    const slotsRows = await db(`user_team_slots?user_name=eq.${enc(clean)}&select=slot_index,card_id,cards_catalog(id,name,position,club,country_code,ovr,rarity)`) ?? [];
+    const slotsRows = await db(`user_team_slots?user_name=eq.${enc(clean)}&select=slot_index,card_id,cards_catalog(id,name,position,club,country_code,ovr,rarity,pac,sho,pas,dri,def,phy,is_gk)`) ?? [];
 
     const slotsMap: Record<string, any> = {};
     slotsRows.forEach((s: any) => { slotsMap[s.slot_index] = s; });
@@ -95,18 +96,24 @@ export async function getTeamBuilder(_chatId: unknown, userName: unknown) {
           cardId: cur.card_id, name: cur.cards_catalog.name, position: cur.cards_catalog.position,
           club: cur.cards_catalog.club, countryCode: cur.cards_catalog.country_code,
           ovr: Number(cur.cards_catalog.ovr) || 0, rarity: cur.cards_catalog.rarity,
+          pac: cur.cards_catalog.pac, sho: cur.cards_catalog.sho, pas: cur.cards_catalog.pas,
+          dri: cur.cards_catalog.dri, def: cur.cards_catalog.def, phy: cur.cards_catalog.phy,
+          isGk: cur.cards_catalog.is_gk,
         } : null,
       };
     });
 
     let coachCard = null;
     if (team && team.coach_card_id) {
-      const coachRows = await db(`cards_catalog?id=eq.${team.coach_card_id}&select=id,name,position,club,country_code,ovr,rarity`) ?? [];
+      const coachRows = await db(`cards_catalog?id=eq.${team.coach_card_id}&select=id,name,position,club,country_code,ovr,rarity,pac,sho,pas,dri,def,phy,is_gk`) ?? [];
       if (coachRows[0]) {
         coachCard = {
           cardId: coachRows[0].id, name: coachRows[0].name, position: coachRows[0].position,
           club: coachRows[0].club, countryCode: coachRows[0].country_code,
           ovr: Number(coachRows[0].ovr) || 0, rarity: coachRows[0].rarity,
+          pac: coachRows[0].pac, sho: coachRows[0].sho, pas: coachRows[0].pas,
+          dri: coachRows[0].dri, def: coachRows[0].def, phy: coachRows[0].phy,
+          isGk: coachRows[0].is_gk,
         };
       }
     }
@@ -182,11 +189,11 @@ export async function getMyTeam(_chatId: unknown, userName: unknown) {
     if (!teams.length) return { ok: false, error: 'Команда не создана' };
     const team = teams[0];
 
-    const slots = await db(`user_team_slots?user_name=eq.${enc(clean)}&select=slot_index,card_id,cards_catalog(id,name,position,club,country_code,ovr,rarity)`) ?? [];
+    const slots = await db(`user_team_slots?user_name=eq.${enc(clean)}&select=slot_index,card_id,cards_catalog(id,name,position,club,country_code,ovr,rarity,pac,sho,pas,dri,def,phy,is_gk)`) ?? [];
 
     let coach = null;
     if (team.coach_card_id) {
-      const cr = await db(`cards_catalog?id=eq.${team.coach_card_id}&select=id,name,position,club,country_code,ovr,rarity`) ?? [];
+      const cr = await db(`cards_catalog?id=eq.${team.coach_card_id}&select=id,name,position,club,country_code,ovr,rarity,pac,sho,pas,dri,def,phy,is_gk`) ?? [];
       if (cr[0]) coach = cr[0];
     }
 

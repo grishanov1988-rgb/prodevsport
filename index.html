@@ -1903,49 +1903,85 @@ body.light .sbc-progress { background: rgba(29,26,18,.07); }
 }
 .card-front {
   transform: rotateY(180deg);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 9px 6px; color: #fff;
+  padding: 0; color: #2b1d08;
   box-shadow: 0 6px 18px rgba(0,0,0,.55);
 }
-.card-front[data-rarity="common"]    { background: linear-gradient(135deg,#3a3d44,#23262d); border: 2px solid #9aa0a6; }
-.card-front[data-rarity="rare"]      { background: linear-gradient(135deg,#1a3a6b,#0d1d3a); border: 2px solid #4a90e2; }
-.card-front[data-rarity="epic"]      { background: linear-gradient(135deg,#4a1e7a,#1f0a33); border: 2px solid #a855f7; box-shadow: 0 0 20px rgba(168,85,247,.5); }
-.card-front[data-rarity="legendary"] { background: linear-gradient(135deg,#7a4a00,#3d2500); border: 2px solid #f59e0b; box-shadow: 0 0 28px rgba(245,158,11,.7); animation: legendaryPulse 2s infinite; }
-.card-front[data-rarity="mythic"]    { background: linear-gradient(135deg,#7a0077,#3d003d); border: 2px solid #ff6ec7; box-shadow: 0 0 30px rgba(255,110,199,.8); animation: mythicGlow 2.5s infinite; }
-@keyframes legendaryPulse { 50% { box-shadow: 0 0 38px rgba(245,158,11,.95); } }
-@keyframes mythicGlow {
-  0%   { box-shadow: 0 0 30px rgba(255,110,199,.8); }
-  33%  { box-shadow: 0 0 35px rgba(230,196,108,.8); }
-  66%  { box-shadow: 0 0 35px rgba(74,144,226,.8); }
-  100% { box-shadow: 0 0 30px rgba(255,110,199,.8); }
+
+/* ===== FC26-стиль карточки: солнечные лучи, щитовидный низ ===== */
+.fc26 {
+  position: absolute; inset: 0; z-index: 1;
+  clip-path: polygon(0 3.2%, 3.5% 0, 96.5% 0, 100% 3.2%, 100% 86%, 50% 100%, 0 86%);
+  overflow: hidden;
 }
-.card-rarity {
-  position: absolute; top: 7px; left: 0; right: 0;
-  text-align: center; font-size: 8px; font-weight: var(--fw-black);
-  letter-spacing: 1.2px; text-transform: uppercase;
+.fc26::before {
+  content: ""; position: absolute; inset: 0;
+  background:
+    repeating-conic-gradient(from -90deg at 50% 33%, rgba(255,255,255,.28) 0deg 4.5deg, rgba(255,255,255,0) 4.5deg 9.5deg),
+    radial-gradient(125% 95% at 50% 0%, #f2d480 0%, #e3ba5b 45%, #c99935 100%);
 }
-.card-front[data-rarity="common"] .card-rarity    { color: #9aa0a6; }
-.card-front[data-rarity="rare"] .card-rarity      { color: #4a90e2; }
-.card-front[data-rarity="epic"] .card-rarity      { color: #c084fc; }
-.card-front[data-rarity="legendary"] .card-rarity { color: #fbbf24; }
-.card-front[data-rarity="mythic"] .card-rarity    { color: #ff6ec7; }
-.card-avatar {
-  width: 46px; height: 46px; border-radius: 50%;
-  border: 2px solid; background: rgba(0,0,0,.35);
+.card-front[data-tier="silver"] .fc26::before {
+  background:
+    repeating-conic-gradient(from -90deg at 50% 33%, rgba(255,255,255,.38) 0deg 4.5deg, rgba(255,255,255,0) 4.5deg 9.5deg),
+    radial-gradient(125% 95% at 50% 0%, #edf0f4 0%, #c8cfd7 45%, #9aa3ad 100%);
+}
+.card-front[data-tier="bronze"] .fc26::before {
+  background:
+    repeating-conic-gradient(from -90deg at 50% 33%, rgba(255,255,255,.22) 0deg 4.5deg, rgba(255,255,255,0) 4.5deg 9.5deg),
+    radial-gradient(125% 95% at 50% 0%, #dda76b 0%, #bd7f45 45%, #96602f 100%);
+}
+.fc26-top { position: absolute; top: 7px; left: 9px; z-index: 2; text-align: center; }
+.fc26-ovr { font-size: 20px; font-weight: var(--fw-black); line-height: 1; color: #2b1d08; }
+.fc26-pos { font-size: 8.5px; font-weight: var(--fw-bold); color: #503a12; letter-spacing: .4px; margin-top: 1px; }
+.fc26-photo {
+  position: absolute; top: 28px; left: 50%; transform: translateX(-50%);
+  width: 54px; height: 54px; border-radius: 50%; z-index: 2;
+  background: radial-gradient(circle at 35% 28%, #f7e3a6, #d3ab55 68%, #ab8136);
+  border: 2px solid rgba(43,29,8,.5);
+  box-shadow: inset 0 -7px 10px rgba(0,0,0,.28), 0 2px 6px rgba(0,0,0,.3);
   display: flex; align-items: center; justify-content: center;
-  position: relative; margin: 15px 0 7px;
 }
-.card-initials { font-size: 14px; font-weight: var(--fw-black); }
-.card-flag { position: absolute; bottom: -4px; right: -4px; font-size: 14px; }
-.card-ovr { font-size: 22px; font-weight: var(--fw-black); line-height: 1; }
-.card-pos { font-size: 9px; font-weight: var(--fw-bold); opacity: .85; letter-spacing: .5px; margin-top: 2px; }
-.card-name { font-size: 10px; font-weight: var(--fw-bold); margin-top: 5px; text-align: center; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.card-club { font-size: 8px; opacity: .65; margin-top: 2px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.fc26-photo span { font-size: 17px; font-weight: var(--fw-black); color: #2b1d08; }
+.fc26-info {
+  position: absolute; left: 0; right: 0; bottom: 0; top: 52%; z-index: 2;
+  padding: 9px 5px 0;
+  background: linear-gradient(180deg, rgba(146,105,32,.22), rgba(112,78,20,.5));
+  border-top: 1px solid rgba(43,29,8,.22);
+  display: flex; flex-direction: column; align-items: center;
+}
+.fc26-name {
+  font-size: 10.5px; font-weight: var(--fw-black); text-transform: uppercase;
+  letter-spacing: .2px; color: #241806; line-height: 1.1;
+  max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fc26-stats { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; margin-top: 4px; }
+.fc26-stat { display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.fc26-stat span { font-size: 5.5px; font-weight: var(--fw-bold); letter-spacing: .5px; color: #5c431a; }
+.fc26-stat b { font-size: 9.5px; font-weight: var(--fw-black); color: #241806; font-variant-numeric: tabular-nums; }
+.fc26-badges { display: flex; align-items: center; gap: 4px; margin-top: auto; margin-bottom: 13px; }
+.fc26-flag { font-size: 10px; line-height: 1; }
+.fc26-clubbadge {
+  min-width: 13px; height: 13px; padding: 0 2px; border-radius: 50%;
+  background: #8c1f28; border: 1px solid rgba(0,0,0,.35);
+  color: #fff; font-size: 6px; font-weight: var(--fw-black);
+  display: flex; align-items: center; justify-content: center;
+}
+.fc26-clubline { font-size: 8px; font-weight: var(--fw-bold); color: #5c431a; margin-top: 5px; }
+
+/* Свечение редкости (эпик и выше) */
+.card-front[data-rarity="epic"]      { filter: drop-shadow(0 0 7px rgba(168,85,247,.8)); }
+.card-front[data-rarity="legendary"] { filter: drop-shadow(0 0 9px rgba(245,158,11,.9)); animation: fcLegendaryPulse 2s infinite; }
+.card-front[data-rarity="mythic"]    { filter: drop-shadow(0 0 9px rgba(255,110,199,.9)); animation: fcMythicGlow 2.5s infinite; }
+@keyframes fcLegendaryPulse { 50% { filter: drop-shadow(0 0 14px rgba(245,158,11,1)); } }
+@keyframes fcMythicGlow {
+  0%   { filter: drop-shadow(0 0 9px rgba(255,110,199,.9)); }
+  33%  { filter: drop-shadow(0 0 12px rgba(230,196,108,.95)); }
+  66%  { filter: drop-shadow(0 0 12px rgba(74,144,226,.95)); }
+  100% { filter: drop-shadow(0 0 9px rgba(255,110,199,.9)); }
+}
 .card-slot.epic-plus.flipped .card-front::before,
 .card-slot.epic-plus.flipped .card-front::after {
   content: "";
-  position: absolute; top: 0; bottom: 0;
+  position: absolute; top: 0; bottom: 0; z-index: 3;
   width: 30px;
   background: linear-gradient(105deg, transparent, rgba(255,255,255,.6), transparent);
   transform: skewX(-20deg);
@@ -2647,19 +2683,7 @@ body.light .xh-item { background: rgba(29,26,18,.03); }
 .xh-xp.plus { color: var(--accent); }
 .xh-xp.minus { color: var(--lose); }
 
-/* --- Улучшенные карточки игроков (FIFA-стиль) --- */
-.card-front { padding: 0; }
-.cf-side {
-  position: absolute; top: 9px; left: 9px;
-  display: flex; flex-direction: column; align-items: flex-start; line-height: 1;
-}
-.cf-ovr { font-size: 21px; font-weight: var(--fw-black); }
-.cf-pos { font-size: 8px; font-weight: var(--fw-bold); opacity: .9; letter-spacing: .6px; margin-top: 3px; }
-.card-avatar { width: 50px; height: 50px; margin: 36px 0 5px; }
-.card-ovr { display: none; }
-.card-pos { display: none; }
-.cf-strip { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; }
-.card-name { margin-top: 3px; }
+/* --- Размер карточки FC26 --- */
 .card-slot { width: 108px; height: 164px; }
 
 /* --- Коллекция: кнопка продажи --- */
@@ -3016,7 +3040,7 @@ var COUNTRY_EMOJI = {
   'IT':'🇮🇹','SE':'🇸🇪','PL':'🇵🇱','HR':'🇭🇷','BE':'🇧🇪','DK':'🇩🇰',
   'MA':'🇲🇦','EG':'🇪🇬','SN':'🇸🇳','NG':'🇳🇬','GH':'🇬🇭','CI':'🇨🇮',
   'JP':'🇯🇵','KR':'🇰🇷','US':'🇺🇸','MX':'🇲🇽','CA':'🇨🇦','AU':'🇦🇺',
-  'SK':'🇸🇰','CO':'🇨🇴','GE':'🇬🇪'
+  'SK':'🇸🇰','CO':'🇨🇴','GE':'🇬🇪','UA':'🇺🇦','EE':'🇪🇪'
 };
 
 var SHOP_STATE = { 
@@ -3519,12 +3543,33 @@ function playBoxAnimation(cards, newBalance) {
   }, 1200);
 }
 
+// Тир карточки по рейтингу — как в FC26: золото 75+, серебро 65+, бронза ниже
+function fcTier_(ovr) {
+  var o = Number(ovr) || 0;
+  if (o >= 75) return 'gold';
+  if (o >= 65) return 'silver';
+  return 'bronze';
+}
+
 function renderCardHtml(c, idx) {
-  var r = RARITY[c.rarity] || RARITY.common;
   var flag = COUNTRY_EMOJI[c.countryCode] || '🌍';
-  var initials = (c.name || '?').split(' ').map(function (s) { return s[0]; }).slice(0, 2).join('');
+  var initials = (c.name || '?').trim().split(/\s+/).map(function (s) { return s[0]; }).slice(0, 2).join('');
   var isEpicPlus = ['epic','legendary','mythic'].indexOf(c.rarity) !== -1 ? ' epic-plus' : '';
-  var lastName = escapeHtml((c.name || '').split(' ').slice(-1)[0] || c.name);
+  var lastName = escapeHtml((c.name || '').trim().split(/\s+/).slice(-1)[0] || c.name);
+  var tier = fcTier_(c.ovr);
+
+  // Шесть характеристик FC26; у вратарей — DIV/HAN/KIC/REF/SPD/POS
+  var statsHtml = '';
+  if (c.pac != null) {
+    var L = c.isGk ? ['DIV','HAN','KIC','REF','SPD','POS'] : ['PAC','SHO','PAS','DRI','DEF','PHY'];
+    var V = [c.pac, c.sho, c.pas, c.dri, c.def, c.phy];
+    statsHtml = '<div class="fc26-stats">' + L.map(function (lbl, i) {
+      return '<div class="fc26-stat"><span>' + lbl + '</span><b>' + (V[i] != null ? V[i] : '—') + '</b></div>';
+    }).join('') + '</div>';
+  } else {
+    statsHtml = '<div class="fc26-clubline">' + escapeHtml(c.club || '') + '</div>';
+  }
+  var clubBadge = escapeHtml(((c.club || '?').trim().slice(0, 3) || '?').toUpperCase());
 
   return '' +
     '<div class="card-slot' + isEpicPlus + '" data-rarity="' + c.rarity + '">' +
@@ -3536,21 +3581,24 @@ function renderCardHtml(c, idx) {
           '<div class="card-back-label">PACK</div>' +
         '</div>' +
 
-        // ЛИЦЕВАЯ (игрок) — FIFA-стиль: OVR+позиция слева, аватар по центру,
-        // имя/клуб снизу, цветная полоса редкости
-        '<div class="card-face card-front" data-rarity="' + c.rarity + '">' +
-          '<div class="card-rarity">' + r.label + '</div>' +
-          '<div class="cf-side">' +
-            '<div class="cf-ovr">' + c.ovr + '</div>' +
-            '<div class="cf-pos" style="color:' + r.color + '">' + escapeHtml(c.position || '') + '</div>' +
+        // ЛИЦЕВАЯ — FC26: рейтинг+позиция слева, фото, имя,
+        // 6 характеристик, флаг и герб клуба
+        '<div class="card-face card-front" data-tier="' + tier + '" data-rarity="' + c.rarity + '">' +
+          '<div class="fc26">' +
+            '<div class="fc26-top">' +
+              '<div class="fc26-ovr">' + c.ovr + '</div>' +
+              '<div class="fc26-pos">' + escapeHtml(c.position || '') + '</div>' +
+            '</div>' +
+            '<div class="fc26-photo"><span>' + escapeHtml(initials) + '</span></div>' +
+            '<div class="fc26-info">' +
+              '<div class="fc26-name">' + lastName + '</div>' +
+              statsHtml +
+              '<div class="fc26-badges">' +
+                '<span class="fc26-flag">' + flag + '</span>' +
+                '<span class="fc26-clubbadge">' + clubBadge + '</span>' +
+              '</div>' +
+            '</div>' +
           '</div>' +
-          '<div class="card-avatar" style="border-color:' + r.color + '">' +
-            '<span class="card-initials">' + escapeHtml(initials) + '</span>' +
-            '<span class="card-flag">' + flag + '</span>' +
-          '</div>' +
-          '<div class="card-name">' + lastName + '</div>' +
-          '<div class="card-club">' + escapeHtml(c.club || '') + '</div>' +
-          '<div class="cf-strip" style="background:' + r.color + '"></div>' +
         '</div>' +
 
       '</div>' +
