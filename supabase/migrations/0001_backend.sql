@@ -83,3 +83,26 @@ create unique index if not exists users_user_name_uidx on public.users (user_nam
 -- ============================================================
 -- select cron.schedule('rate-limits-cleanup', '7 * * * *', $$select public.rate_limits_cleanup()$$);
 -- select cron.schedule('notify-log-cleanup', '23 * * * *', $$delete from public.notify_log where sent_at < now() - interval '48 hours'$$);
+
+-- ------------------------------------------------------------
+--  Расписание парсеров и уведомлений (pg_cron + pg_net → Edge Functions).
+--  Ключ передаётся в Authorization: Bearer <ADMIN_SECRET>.
+--  Раскомментировать после деплоя функций и подстановки значений:
+--
+-- ⚠️ подставить: <ПРОЕКТ>, <ADMIN_SECRET>, <SUPABASE_SERVICE_ROLE_KEY>
+--
+-- -- парсеры: каждый час в :05
+-- select cron.schedule('jobs-parse', '5 * * * *', $$
+--   select net.http_post(
+--     url := 'https://<ПРОЕКТ>.supabase.co/functions/v1/jobs-parse',
+--     headers := jsonb_build_object('Authorization', 'Bearer <ADMIN_SECRET>'),
+--     timeout_milliseconds := 55000
+--   ) $$);
+--
+-- -- уведомления: каждые 30 минут (окна 3ч и 1ч до матча)
+-- select cron.schedule('jobs-notify', '*/30 * * * *', $$
+--   select net.http_post(
+--     url := 'https://<ПРОЕКТ>.supabase.co/functions/v1/jobs-notify',
+--     headers := jsonb_build_object('Authorization', 'Bearer <ADMIN_SECRET>'),
+--     timeout_milliseconds := 55000
+--   ) $$);
