@@ -82,3 +82,4 @@ curl "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
 - [x] Этап 6: Team Builder + батлы + GIPHY
 - [x] Этап 7: парсеры + jobs (уведомления, пересчёт очков)
 - [x] Этап 8: admin_* + переезд Admin.html на fetch (`admin/index.html` в репо)
+- [x] Этап 9: деплой — миграция, секреты, 4 функции, webhook, pg_cron-расписание, фронт переключён на Supabase
