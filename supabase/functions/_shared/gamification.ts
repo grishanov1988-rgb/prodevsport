@@ -9,7 +9,7 @@ import { XP_ACHIEVEMENTS } from './config.ts';
 import { enc, getPeriodKey, formatDateMsk } from './util.ts';
 import { getUserAchievements } from './core.ts';
 
-export const XP_REWARDS = { prediction: 5, streakBonus: 10, outcomeHit: 10, diffHit: 20, exactScore: 40, taskClaim: 0 };
+export const XP_REWARDS = { prediction: 5, firstOfDay: 15, streakBonus: 10, outcomeHit: 10, diffHit: 20, exactScore: 40, bothScored: 5, taskClaim: 0 };
 
 export function xpForLevel(level: number): number { return 50 * Math.pow(level, 2); }
 export function calcLevel(xp: number): number { return Math.floor(Math.sqrt(Math.max(0, xp) / 50)); }
@@ -76,15 +76,17 @@ export async function addXP(userName: string, amount: number, reason: string) {
   let exactCount = profile ? Number(profile.exact_scores) || 0 : 0;
 
   let actualAmount = amount;
-  const extraXP = 0;
+  let extraXP = 0;
   if (reason === 'prediction') {
     if (lastPred !== todayKey) {
       const yest = new Date(Date.now() - 86400000);
       const yKey = formatDateMsk(yest.toISOString(), 'yyyy-MM-dd');
       streak = lastPred === yKey ? streak + 1 : 1;
       lastPred = todayKey;
-      actualAmount = 10;
-    } else actualAmount = 5;
+      // Первый прогноз дня дороже, серия 3+ дней — бонус
+      actualAmount = XP_REWARDS.firstOfDay;
+      if (streak >= 3) extraXP = XP_REWARDS.streakBonus;
+    } else actualAmount = XP_REWARDS.prediction;
     predsCount += 1;
   }
   if (reason === 'exactScore') exactCount += 1;
@@ -195,10 +197,10 @@ export function invalidateTaskTemplates(): void { tplCache = null; }
 export async function bumpTasks(userName: string, event: string): Promise<void> {
   const templates = await getTaskTemplates();
   const mapping: Record<string, string[]> = {
-    prediction: ['daily_1_prediction', 'daily_3_predictions', 'weekly_10_predictions', 'monthly_50_predictions'],
-    outcomeHit: ['daily_1_outcome', 'weekly_5_outcomes'],
+    prediction: ['daily_1_prediction', 'daily_3_predictions', 'weekly_10_predictions', 'weekly_15_predictions', 'monthly_50_predictions'],
+    outcomeHit: ['daily_1_outcome', 'daily_2_outcomes', 'weekly_5_outcomes', 'monthly_20_outcomes'],
     diffHit: [],
-    exactScore: ['daily_1_exact', 'weekly_3_exact', 'weekly_10_exact'],
+    exactScore: ['daily_1_exact', 'weekly_3_exact', 'monthly_10_exact'],
     bothScoredTrigger: ['weekly_both_scored'],
   };
   const affected = mapping[event] || [];

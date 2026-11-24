@@ -2747,6 +2747,15 @@ body.light .battle-timeline { background: rgba(29,26,18,.04); }
   background: radial-gradient(circle, rgba(230,196,108,.14), transparent 68%);
   border-radius: 50%; pointer-events: none;
 }
+/* Полосы футбольного газона под колесом */
+.wheel-card::after {
+  content: ""; position: absolute; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(90deg,
+    rgba(46,125,60,.10) 0 26px,
+    rgba(24,60,32,.10) 26px 52px);
+  pointer-events: none;
+}
+.wheel-stage { z-index: 1; }
 .wheel-title-row {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 12px; position: relative; z-index: 1;
@@ -2760,8 +2769,8 @@ body.light .battle-timeline { background: rgba(29,26,18,.04); }
 .wheel-stage { position: relative; width: 236px; height: 236px; margin: 0 auto 6px; }
 .wheel-canvas-wrap {
   position: absolute; inset: 0; border-radius: 50%;
-  border: 5px solid rgba(230,196,108,.4);
-  box-shadow: 0 10px 34px rgba(0,0,0,.55), inset 0 0 0 2px rgba(0,0,0,.4);
+  border: 5px solid rgba(240,240,240,.85);
+  box-shadow: 0 10px 34px rgba(0,0,0,.55), 0 0 0 3px rgba(46,125,60,.55), inset 0 0 0 2px rgba(0,0,0,.4);
   transition: transform 4.6s cubic-bezier(.12,.8,.18,1);
   will-change: transform;
 }
@@ -2778,10 +2787,22 @@ body.light .battle-timeline { background: rgba(29,26,18,.04); }
   width: 58px; height: 58px; border-radius: 50%;
   background: var(--gold-grad); color: var(--on-accent);
   display: flex; align-items: center; justify-content: center;
-  font-size: 24px; z-index: 2;
+  font-size: 26px; z-index: 2;
   box-shadow: 0 0 0 4px rgba(13,13,19,.9), var(--gold-glow);
   font-family: var(--font-display);
 }
+/* Мяч крутится пока крутится колесо */
+@keyframes hub-roll {
+  from { transform: translate(-50%,-50%) rotate(0deg); }
+  to   { transform: translate(-50%,-50%) rotate(2160deg); }
+}
+.wheel-hub.rolling { animation: hub-roll 4.6s cubic-bezier(.12,.8,.18,1); }
+/* Пульс свечения во время вращения */
+@keyframes wheel-glow {
+  0%, 100% { box-shadow: 0 10px 34px rgba(0,0,0,.55), 0 0 0 3px rgba(46,125,60,.55), inset 0 0 0 2px rgba(0,0,0,.4); }
+  50% { box-shadow: 0 10px 40px rgba(0,0,0,.6), 0 0 26px rgba(230,196,108,.55), 0 0 0 3px rgba(230,196,108,.6), inset 0 0 0 2px rgba(0,0,0,.4); }
+}
+.wheel-canvas-wrap.rolling-glow { animation: wheel-glow 1.15s ease-in-out infinite; }
 .wheel-spin-btn {
   width: 100%; padding: 13px;
   background: var(--gold-grad); color: var(--on-accent);
@@ -2874,9 +2895,53 @@ body.light .xh-item { background: rgba(29,26,18,.03); }
 .card-mini { padding-bottom: 9px; }
 
 /* --- Улучшенные боксы в магазине --- */
-.shop-box-compact { min-height: 64px; }
-.sbox-emoji { font-size: 32px; width: 42px; }
-.shop-box-compact.free { flex-direction: row; }
+.shop-boxes-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.shop-boxes-grid .shop-box-compact {
+  flex-direction: column; align-items: center; justify-content: flex-start;
+  text-align: center; gap: 4px;
+  padding: 12px 6px 10px;
+  min-height: 132px;
+  position: relative; overflow: hidden;
+}
+.shop-boxes-grid .shop-box-compact::before {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, rgba(46,125,60,.08) 0 14px, transparent 14px 28px);
+  pointer-events: none;
+}
+/* Лёгкое «подпрыгивание» иконок боксов */
+@keyframes sbox-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.shop-boxes-grid .sbox-emoji {
+  font-size: 40px; width: auto; line-height: 1.15;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,.45));
+  animation: sbox-float 3.2s ease-in-out infinite;
+  position: relative; z-index: 1;
+}
+.shop-boxes-grid .shop-box-compact:nth-child(2) .sbox-emoji { animation-delay: .5s; }
+.shop-boxes-grid .shop-box-compact:nth-child(3) .sbox-emoji { animation-delay: 1s; }
+/* Сияние редкости: золотой бокс светится */
+.shop-boxes-grid .shop-box-compact[data-box="gold"] {
+  border-color: rgba(230,196,108,.55);
+  box-shadow: var(--gold-glow), var(--inset-top);
+}
+.shop-boxes-grid .sbox-body { width: 100%; position: relative; z-index: 1; }
+.shop-boxes-grid .sbox-name {
+  font-size: 11.5px; white-space: normal; line-height: 1.2;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.shop-boxes-grid .sbox-desc { font-size: 8.5px; }
+.shop-boxes-grid .sbox-btn {
+  width: 100%; height: 26px; border-radius: 8px;
+  font-size: 12px; margin-top: 2px; position: relative; z-index: 1;
+}
+.shop-boxes-grid .sbox-btn:disabled { font-size: 10px; }
+@media (max-width: 380px) {
+  .shop-boxes-grid .sbox-emoji { font-size: 34px; }
+  .shop-boxes-grid .shop-box-compact { min-height: 122px; padding: 10px 5px 8px; }
+}
+.shop-box-compact.free { flex-direction: row; min-height: 64px; }
 
 @media (max-width: 380px) {
   .wheel-stage { width: 210px; height: 210px; }
@@ -3365,7 +3430,7 @@ function renderShopContent() {
           '<div class="sbox-price">' + b.price.toLocaleString('ru-RU') + ' XP</div>' +
         '</div>' +
         '<button class="sbox-btn" ' + (canBuy ? '' : 'disabled') + '>' +
-          (canBuy ? '→' : '🔒') +
+          (canBuy ? 'Открыть' : '🔒 XP') +
         '</button>' +
       '</div>';
   });
@@ -3470,26 +3535,39 @@ function openDailyCardModal_(card) {
    🎡 КОЛЕСО ФОРТУНЫ
    ============================================================ */
 var WHEEL = {
-  segments: [25, 100, 50, 200, 75, 150, 25, 300],
+  prizes: [
+    { kind: 'xp', icon: '✨', label: '25 XP' },
+    { kind: 'box', icon: '🎫', label: 'Фан-бокс' },
+    { kind: 'xp', icon: '✨', label: '75 XP' },
+    { kind: 'box', icon: '🧤', label: 'Профи-бокс' },
+    { kind: 'xp', icon: '✨', label: '150 XP' },
+    { kind: 'joker', icon: '🃏', label: 'Джокер' },
+    { kind: 'xp', icon: '✨', label: '200 XP' },
+    { kind: 'box', icon: '🏆', label: 'Золотой' },
+    { kind: 'xp', icon: '⭐', label: '500 XP' }
+  ],
   rotation: 0,
   spinning: false,
   status: null
 };
 
 function wheelColors_() {
+  // «Газон»: чередование полос футбольного поля
   return document.body.classList.contains('light')
-    ? ['#e9cf8b', '#c9a544', '#f0e2b6', '#b98f2e', '#e9cf8b', '#c9a544', '#f0e2b6', '#a8842c']
-    : ['#2a2a36', '#3a3320', '#22222c', '#4a3d1c', '#2a2a36', '#3a3320', '#22222c', '#54450f'];
+    ? ['#bfe0b8', '#a9d69e', '#bfe0b8', '#a9d69e', '#bfe0b8', '#a9d69e', '#bfe0b8', '#a9d69e', '#bfe0b8']
+    : ['#17301e', '#1d3a25', '#17301e', '#1d3a25', '#17301e', '#1d3a25', '#17301e', '#1d3a25', '#17301e'];
 }
 
 function drawWheel_() {
   var canvas = document.getElementById('wheelCanvas');
   if (!canvas) return;
   var ctx = canvas.getContext('2d');
-  var n = WHEEL.segments.length;
+  var prizes = WHEEL.prizes;
+  var n = prizes.length;
   var seg = (Math.PI * 2) / n;
   var cx = 240, cy = 240, r = 236;
   var colors = wheelColors_();
+  var light = document.body.classList.contains('light');
   ctx.clearRect(0, 0, 480, 480);
   for (var i = 0; i < n; i++) {
     var a0 = i * seg - Math.PI / 2;
@@ -3500,20 +3578,40 @@ function drawWheel_() {
     ctx.closePath();
     ctx.fillStyle = colors[i % colors.length];
     ctx.fill();
-    ctx.strokeStyle = 'rgba(230,196,108,.35)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(230,196,108,.45)';
+    ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Текст приза
+    // Разметка поля на внутреннем круге
+    if (i === 0) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.42, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,.14)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Иконка приза + подпись (радиально)
     var mid = a0 + seg / 2;
     ctx.save();
-    ctx.translate(cx + Math.cos(mid) * r * 0.66, cy + Math.sin(mid) * r * 0.66);
+    ctx.translate(cx + Math.cos(mid) * r * 0.48, cy + Math.sin(mid) * r * 0.48);
     ctx.rotate(mid + Math.PI / 2);
-    ctx.fillStyle = document.body.classList.contains('light') ? '#1d1a12' : '#f7e3a6';
-    ctx.font = '800 30px Manrope, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(WHEEL.segments[i]), 0, 0);
+    ctx.font = '46px sans-serif';
+    ctx.fillText(prizes[i].icon, 0, 0);
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(cx + Math.cos(mid) * r * 0.76, cy + Math.sin(mid) * r * 0.76);
+    ctx.rotate(mid + Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = light ? '#17301e' : '#f7e3a6';
+    ctx.font = '800 22px Manrope, sans-serif';
+    ctx.fillText(prizes[i].label, 0, 0);
     ctx.restore();
   }
 }
@@ -3539,7 +3637,7 @@ function initWheel_() {
   }
   callServer('miniApp_getWheelStatus', CHAT_ID, USER_NAME).then(function (res) {
     if (res && res.ok) {
-      if (res.segments && res.segments.length) WHEEL.segments = res.segments;
+      if (res.prizes && res.prizes.length) WHEEL.prizes = res.prizes;
       WHEEL.status = res;
       drawWheel_();
       updateWheelStatusUI_();
@@ -3564,7 +3662,15 @@ function spinWheel_() {
     }
     animateWheelTo_(res.prizeIndex, function () {
       WHEEL.spinning = false;
-      showXPToast('+' + res.prizeXP + ' XP');
+      var prize = res.prize || { kind: 'xp', xp: 0 };
+      if (prize.kind === 'box' && prize.cards && prize.cards.length) {
+        showToast(prize.icon + ' Выигран «' + (prize.label || 'бокс') + '»!', 'success');
+        setTimeout(function () { openPrizeCardsModal_(prize.cards, prize.label); }, 700);
+      } else if (prize.kind === 'joker') {
+        showToast('🃏 Джокер ×2 у вас! Всего: ' + (prize.jokersCount || 1), 'success');
+      } else {
+        showXPToast('+' + (prize.xp || 0) + ' XP');
+      }
       haptic('heavy');
       if (res.xp && res.xp.leveledUp) {
         setTimeout(function () { showLevelUp(res.xp.level); }, 600);
@@ -3597,7 +3703,10 @@ function spinWheel_() {
 function animateWheelTo_(prizeIndex, done) {
   var wrap = document.getElementById('wheelWrap');
   if (!wrap) { done(); return; }
-  var n = WHEEL.segments.length;
+  var hub = document.querySelector('.wheel-hub');
+  if (hub) hub.classList.add('rolling');
+  wrap.classList.add('rolling-glow');
+  var n = WHEEL.prizes.length;
   var seg = 360 / n;
   // указатель сверху (-90°); сектор i рисуется от i*seg-90 до (i+1)*seg-90
   var targetMod = (360 - (prizeIndex * seg + seg / 2)) % 360;
@@ -3605,7 +3714,34 @@ function animateWheelTo_(prizeIndex, done) {
   var delta = ((targetMod - curMod) + 360) % 360;
   WHEEL.rotation += 5 * 360 + delta;
   wrap.style.transform = 'rotate(' + WHEEL.rotation + 'deg)';
-  setTimeout(done, 4750);
+  setTimeout(function () {
+    if (hub) hub.classList.remove('rolling');
+    wrap.classList.remove('rolling-glow');
+    done();
+  }, 4750);
+}
+
+/* Модалка с карточками, выигранными на колесе */
+function openPrizeCardsModal_(cards, prizeLabel) {
+  var backdrop = document.createElement('div');
+  backdrop.id = 'boxModal';
+  backdrop.className = 'modal-backdrop show';
+  backdrop.innerHTML =
+    '<div class="modal box-modal">' +
+      '<div class="box-cards" id="boxCards"></div>' +
+      '<div class="box-footer" id="boxFooter"></div>' +
+    '</div>';
+  document.body.appendChild(backdrop);
+  var cardsBox = document.getElementById('boxCards');
+  cardsBox.innerHTML = cards.map(function (c, i) { return renderCardHtml(c, i); }).join('');
+  cardsBox.querySelectorAll('.card-slot').forEach(function (el, i) {
+    setTimeout(function () { el.classList.add('revealed'); }, 120 + i * 180);
+    setTimeout(function () { el.classList.add('flipped'); haptic('medium'); }, 550 + i * 220);
+  });
+  setTimeout(function () {
+    var f = document.getElementById('boxFooter');
+    if (f) f.innerHTML = '<button class="box-collect-btn" onclick="closeBoxModal()">✨ Забрать</button>';
+  }, 900 + cards.length * 230);
 }
 
 /* Бейдж «!» на вкладке Магазин, пока есть бесплатный спин */

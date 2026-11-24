@@ -165,9 +165,12 @@ export async function savePrediction(payload: any) {
       });
     } catch (e: any) {
       if (useJoker && jokerResult) await rollbackJoker(userName, jokerResult.remainingJokers || 0);
-      if (String(e).indexOf('409') !== -1 || String(e).indexOf('duplicate') !== -1) {
-        return { ok: false, error: 'Вы уже сделали прогноз на этот матч', alreadyExists: true };
-      }
+      // 409 бывает и при нарушении FK (неизвестный пользователь) —
+      // считаем «дублем» только если запись реально существует
+      try {
+        const existsNow = await db(`predictions?user_name=eq.${enc(userName)}&league_code=eq.${enc(leagueCode)}&match_norm=eq.${enc(matchNorm)}&select=id`) ?? [];
+        if (existsNow.length) return { ok: false, error: 'Вы уже сделали прогноз на этот матч', alreadyExists: true };
+      } catch { /* ignore */ }
       throw e;
     }
 

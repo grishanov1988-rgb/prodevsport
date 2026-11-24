@@ -11,8 +11,19 @@ import { checkRateLimit } from '../_shared/core.ts';
 import { getXPProfile, addXP, spendXP, wasXPAwarded, logXPAward } from '../_shared/gamification.ts';
 
 const JOKER_PRICE_XP = 500;
-const WHEEL_SEGMENTS = [25, 100, 50, 200, 75, 150, 25, 300];
-const WHEEL_WEIGHTS = [22, 12, 20, 6, 16, 8, 12, 4];
+// Колесо фортуны: призы — XP, боксы и джокер (вес = шанс, сумма 100)
+interface WheelPrize { kind: 'xp' | 'box' | 'joker'; icon: string; label: string; value?: number; boxCode?: string; w: number }
+const WHEEL_PRIZES: WheelPrize[] = [
+  { kind: 'xp', icon: '✨', label: '25 XP', value: 25, w: 22 },
+  { kind: 'box', icon: '🎫', label: 'Фан-бокс', boxCode: 'bronze', w: 14 },
+  { kind: 'xp', icon: '✨', label: '75 XP', value: 75, w: 16 },
+  { kind: 'box', icon: '🧤', label: 'Профи-бокс', boxCode: 'silver', w: 7 },
+  { kind: 'xp', icon: '✨', label: '150 XP', value: 150, w: 11 },
+  { kind: 'joker', icon: '🃏', label: 'Джокер', w: 4 },
+  { kind: 'xp', icon: '✨', label: '200 XP', value: 200, w: 5 },
+  { kind: 'box', icon: '🏆', label: 'Золотой', boxCode: 'gold', w: 2 },
+  { kind: 'xp', icon: '⭐', label: '500 XP', value: 500, w: 1 },
+];
 const WHEEL_PAID_PRICE = 100;
 const CARD_SELL_MULT: Record<string, number> = { common: 1, rare: 2, epic: 3, legendary: 5, mythic: 8 };
 
@@ -73,6 +84,56 @@ export async function getShop(_chatId: unknown, userName: unknown) {
 }
 
 // ------------------------------------------------------------
+//  Розыгрыш карточек по параметрам бокса (общий для openBox и колеса)
+// ------------------------------------------------------------
+async function drawCardsFromBox(box: any): Promise<any[]> {
+  const catalog = await db('cards_catalog?is_active=eq.true&select=id,name,position,club,country,country_code,ovr,rarity,image_url,pac,sho,pas,dri,def,phy,is_gk') ?? [];
+  const byRarity: Record<string, any[]> = {};
+  catalog.forEach((c: any) => { (byRarity[c.rarity] = byRarity[c.rarity] || []).push(c); });
+  const weights = box.rarity_weights || { common: 55, rare: 30, epic: 12, legendary: 3 };
+  const cardsPerBox = Number(box.cards_per_box) || 3;
+  const received: any[] = [];
+  for (let i = 0; i < cardsPerBox; i++) {
+    let rarity = rollRarity(weights);
+    let pool = byRarity[rarity] || [];
+    let attempts = 0;
+    while (!pool.length && attempts < 5) { rarity = rollRarity(weights); pool = byRarity[rarity] || []; attempts++; }
+    if (!pool.length) pool = catalog;
+    received.push(pool[Math.floor(Math.random() * pool.length)]);
+  }
+  return received;
+}
+
+async function saveCardsToUser(clean: string, received: any[]): Promise<void> {
+  for (const card of received) {
+    try {
+      const existing = await db(`user_cards?user_name=eq.${enc(clean)}&card_id=eq.${card.id}&select=id,quantity`) ?? [];
+      if (existing.length) {
+        await db(`user_cards?id=eq.${existing[0].id}`, {
+          method: 'patch',
+          body: { quantity: (Number(existing[0].quantity) || 0) + 1 },
+          prefer: 'return=minimal',
+        });
+      } else {
+        await db('user_cards', {
+          method: 'post',
+          body: [{ user_name: clean, card_id: card.id, quantity: 1 }],
+          prefer: 'return=minimal,resolution=ignore-duplicates',
+        });
+      }
+    } catch { /* ignore */ }
+  }
+}
+
+function cardPublic(c: any) {
+  return {
+    id: c.id, name: c.name, position: c.position, club: c.club, country: c.country,
+    countryCode: c.country_code, ovr: c.ovr, rarity: c.rarity, imageUrl: c.image_url,
+    pac: c.pac, sho: c.sho, pas: c.pas, dri: c.dri, def: c.def, phy: c.phy, isGk: c.is_gk,
+  };
+}
+
+// ------------------------------------------------------------
 //  openBox
 // ------------------------------------------------------------
 export async function openBox(_chatId: unknown, userName: unknown, boxCode: unknown) {
@@ -90,40 +151,8 @@ export async function openBox(_chatId: unknown, userName: unknown, boxCode: unkn
     const spend = await spendXP(clean, price, 'box_' + code);
     if (!spend.ok) return spend;
 
-    const catalog = await db('cards_catalog?is_active=eq.true&select=id,name,position,club,country,country_code,ovr,rarity,image_url,pac,sho,pas,dri,def,phy,is_gk') ?? [];
-    const byRarity: Record<string, any[]> = {};
-    catalog.forEach((c: any) => { (byRarity[c.rarity] = byRarity[c.rarity] || []).push(c); });
-
-    const weights = box.rarity_weights || { common: 55, rare: 30, epic: 12, legendary: 3 };
-    const cardsPerBox = Number(box.cards_per_box) || 3;
-    const received: any[] = [];
-    for (let i = 0; i < cardsPerBox; i++) {
-      let rarity = rollRarity(weights);
-      let pool = byRarity[rarity] || [];
-      let attempts = 0;
-      while (!pool.length && attempts < 5) { rarity = rollRarity(weights); pool = byRarity[rarity] || []; attempts++; }
-      if (!pool.length) pool = catalog;
-      received.push(pool[Math.floor(Math.random() * pool.length)]);
-    }
-
-    for (const card of received) {
-      try {
-        const existing = await db(`user_cards?user_name=eq.${enc(clean)}&card_id=eq.${card.id}&select=id,quantity`) ?? [];
-        if (existing.length) {
-          await db(`user_cards?id=eq.${existing[0].id}`, {
-            method: 'patch',
-            body: { quantity: (Number(existing[0].quantity) || 0) + 1 },
-            prefer: 'return=minimal',
-          });
-        } else {
-          await db('user_cards', {
-            method: 'post',
-            body: [{ user_name: clean, card_id: card.id, quantity: 1 }],
-            prefer: 'return=minimal,resolution=ignore-duplicates',
-          });
-        }
-      } catch { /* ignore */ }
-    }
+    const received = await drawCardsFromBox(box);
+    await saveCardsToUser(clean, received);
 
     try {
       await db('box_openings', {
@@ -135,11 +164,7 @@ export async function openBox(_chatId: unknown, userName: unknown, boxCode: unkn
 
     return {
       ok: true, newBalance: (spend as any).newBalance, spent: price,
-      cards: received.map((c) => ({
-        id: c.id, name: c.name, position: c.position, club: c.club, country: c.country,
-        countryCode: c.country_code, ovr: c.ovr, rarity: c.rarity, imageUrl: c.image_url,
-        pac: c.pac, sho: c.sho, pas: c.pas, dri: c.dri, def: c.def, phy: c.phy, isGk: c.is_gk,
-      })),
+      cards: received.map(cardPublic),
     };
   } catch (e: any) { return { ok: false, error: e.message }; }
 }
@@ -320,7 +345,7 @@ export async function getWheelStatus(_chatId: unknown, userName: unknown) {
     } catch { /* ignore */ }
     return {
       ok: true,
-      segments: WHEEL_SEGMENTS,
+      prizes: WHEEL_PRIZES.map((x) => ({ kind: x.kind, icon: x.icon, label: x.label })),
       freeAvailable,
       paidPrice: WHEEL_PAID_PRICE,
       canPaid: balance >= WHEEL_PAID_PRICE,
@@ -345,26 +370,54 @@ export async function spinWheel(_chatId: unknown, userName: unknown) {
 
     // Сервер — единственный источник результата
     let total = 0;
-    WHEEL_WEIGHTS.forEach((w) => { total += w; });
+    WHEEL_PRIZES.forEach((x) => { total += x.w; });
     const r = Math.random() * total;
     let acc = 0, idx = 0;
-    for (let i = 0; i < WHEEL_WEIGHTS.length; i++) {
-      acc += WHEEL_WEIGHTS[i];
+    for (let i = 0; i < WHEEL_PRIZES.length; i++) {
+      acc += WHEEL_PRIZES[i].w;
       if (r < acc) { idx = i; break; }
     }
-    const prizeXP = WHEEL_SEGMENTS[idx];
-    const xpRes = await addXP(clean, prizeXP, 'wheelPrize');
+    const prize = WHEEL_PRIZES[idx];
+    const prizeOut: any = { kind: prize.kind, icon: prize.icon, label: prize.label };
+    let xpRes: any = null;
+
+    if (prize.kind === 'xp') {
+      xpRes = await addXP(clean, prize.value || 0, 'wheelPrize');
+      prizeOut.xp = prize.value || 0;
+    } else if (prize.kind === 'box') {
+      const boxRows = await db(`box_types?code=eq.${enc(prize.boxCode || '')}&is_active=eq.true`) ?? [];
+      if (!boxRows.length) { xpRes = await addXP(clean, 100, 'wheelPrize'); prizeOut.kind = 'xp'; prizeOut.xp = 100; }
+      else {
+        const received = await drawCardsFromBox(boxRows[0]);
+        await saveCardsToUser(clean, received);
+        prizeOut.boxCode = prize.boxCode;
+        prizeOut.cards = received.map(cardPublic);
+      }
+    } else if (prize.kind === 'joker') {
+      const rows = await db(`xp_profiles?user_name=eq.${enc(clean)}&select=jokers_count`) ?? [];
+      const newCount = (Number(rows[0] && rows[0].jokers_count) || 0) + 1;
+      await db('xp_profiles?on_conflict=user_name', {
+        method: 'post',
+        body: [{ user_name: clean, jokers_count: newCount, updated_at: new Date().toISOString() }],
+        prefer: 'return=minimal,resolution=merge-duplicates',
+      });
+      prizeOut.jokersCount = newCount;
+    }
+
     if (!paid) await logXPAward(clean, 'wheel_' + todayKey, 'wheel_free_spin', 0);
 
     try {
       await db('box_openings', {
         method: 'post',
-        body: [{ user_name: clean, box_code: 'wheel_spin', card_ids: [], xp_spent: paid ? WHEEL_PAID_PRICE : 0 }],
+        body: [{ user_name: clean, box_code: 'wheel_spin', card_ids: prizeOut.cards ? prizeOut.cards.map((c: any) => c.id) : [], xp_spent: paid ? WHEEL_PAID_PRICE : 0 }],
         prefer: 'return=minimal',
       });
     } catch { /* ignore */ }
 
-    return { ok: true, prizeIndex: idx, prizeXP, paid, newBalance: xpRes ? (xpRes as any).balance : null, xp: xpRes };
+    return {
+      ok: true, prizeIndex: idx, prize: prizeOut, paid,
+      newBalance: xpRes ? xpRes.balance : null, xp: xpRes,
+    };
   } catch (e: any) { return { ok: false, error: e.message }; }
 }
 
