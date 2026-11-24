@@ -27,7 +27,7 @@ export const LEAGUES: Record<string, {
   FL1: { code: 'FL1', name: 'Лига 1 (Франция)',           emoji: '🇫🇷', flagClass: 'flag-fr',  competition: 'FL1' },
   ELC: { code: 'ELC', name: 'Чемпионшип (Англия)',        emoji: '🏴', flagClass: 'flag-eng', competition: 'ELC' },
   PPL: { code: 'PPL', name: 'Примейра-лига (Португалия)', emoji: '🇵🇹', flagClass: 'flag-pt',  competition: 'PPL' },
-  UNL: { code: 'UNL', name: 'Лига наций',                 emoji: '🌍', flagClass: '',         competition: null  },
+  // UNL (Лига наций) убрана по запросу владельца — 2026-11-24
 };
 
 export const XP_ACHIEVEMENTS: Record<string, { code: string; name: string }> = {

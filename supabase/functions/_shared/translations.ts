@@ -62,6 +62,7 @@ export const TEAM_TRANSLATIONS: Record<string, string> = {
   "Rangers FC": "Рейнджерс",
 
   // Ла Лига
+  "RC Celta de Vigo": "Сельта",
   "Sevilla FC": "Севилья",
   "Real Sociedad de Fútbol": "Реал Сосьедад",
   "Athletic Club": "Атлетик Б",
@@ -160,5 +161,9 @@ export const TEAM_TRANSLATIONS: Record<string, string> = {
 };
 
 export function translateTeamName(englishName: string): string {
-  return TEAM_TRANSLATIONS[englishName] || englishName;
+  if (TEAM_TRANSLATIONS[englishName]) return TEAM_TRANSLATIONS[englishName];
+  // Фолбэк: football-data иногда добавляет суффикс («Blackburn Rovers» → «Blackburn Rovers FC»)
+  const stripped = englishName.replace(/\s+(FC|AFC|CF|SC|AC|CD|UD)$/i, '');
+  if (TEAM_TRANSLATIONS[stripped]) return TEAM_TRANSLATIONS[stripped];
+  return englishName;
 }

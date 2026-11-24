@@ -24,7 +24,9 @@ export function normalizeTeamName(s: string): string {
 }
 
 export function splitMatchTeams_(matchName: string): { home: string; away: string } {
-  const parts = String(matchName || '').split(/\s*[-–—]\s*/);
+  // Разделитель — только дефис/тире с пробелами вокруг: «Команда А - Команда Б».
+  // Дефис внутри названия («Эшторил-Прая», «Лас-Пальмас») не является разделителем.
+  const parts = String(matchName || '').split(/\s+[-–—]\s+/);
   return { home: (parts[0] || '').trim(), away: (parts[1] || '').trim() };
 }
 

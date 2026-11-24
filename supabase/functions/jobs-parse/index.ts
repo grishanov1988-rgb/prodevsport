@@ -222,6 +222,47 @@ async function updateLeague(leagueCode: string) {
 // ------------------------------------------------------------
 //  HTTP-обработчик
 // ------------------------------------------------------------
+// ------------------------------------------------------------
+//  Эмблемы клубов → таблица teams (crest_url из football-data).
+//  Названия переводим через TEAM_TRANSLATIONS — в matches они
+//  хранятся уже по-русски, resolveTeams сопоставляет по ним.
+// ------------------------------------------------------------
+async function syncTeamsForLeague(leagueCode: string): Promise<number> {
+  const cfg = (LEAGUES as any)[leagueCode];
+  if (!cfg || !cfg.competition) return 0; // UNL и т.п. — источника эмблем нет
+  try {
+    const resp = await fetch(`${BASE_URL}/competitions/${cfg.competition}/teams`, {
+      headers: { 'X-Auth-Token': FOOTBALL_API_KEY },
+    });
+    if (!resp.ok) { console.log(`⚠️ teams ${leagueCode}: HTTP ${resp.status}`); return 0; }
+    const data = await resp.json();
+    const teams = data.teams || [];
+    if (!teams.length) return 0;
+    const rows = teams.map((t: any) => {
+      const ru = translateTeamName(t.name || '');
+      return {
+        team_name: ru,
+        short_name: ru,
+        crest_url: t.crest || '',
+        league_code: leagueCode,
+        is_active: true,
+      };
+    }).filter((r: any) => r.team_name && r.crest_url);
+    for (let i = 0; i < rows.length; i += 50) {
+      const chunk = rows.slice(i, i + 50);
+      await db('teams?on_conflict=team_name', {
+        method: 'post',
+        body: chunk,
+        prefer: 'return=minimal,resolution=merge-duplicates',
+      });
+    }
+    return rows.length;
+  } catch (e) {
+    console.log(`⚠️ teams ${leagueCode}: ` + e);
+    return 0;
+  }
+}
+
 Deno.serve(async (req) => {
   // Защита от посторонних вызовов
   const auth = req.headers.get('Authorization') || '';
@@ -244,8 +285,10 @@ Deno.serve(async (req) => {
       if (!affectedNorms[code]) affectedNorms[code] = new Set();
       (r as any).newlyScored.forEach((m: any) => affectedNorms[code].add(m.match_norm));
     }
-    // Пауза между лигами — щадим квоту API
-    if (codes.indexOf(code) < codes.length - 1) await sleep(PAGE_DELAY_MS);
+    // Эмблемы клубов — после паузы между лигами (отдельный запрос API)
+    await sleep(PAGE_DELAY_MS);
+    const teamsSynced = await syncTeamsForLeague(code);
+    if (teamsSynced > 0) console.log(`🛡 ${code}: эмблем ${teamsSynced}`);
   }
 
   // ── Пересчёт очков ──
