@@ -399,8 +399,11 @@ body.light .team-crest { box-shadow: 0 0 0 1px rgba(0,0,0,.07), 0 2px 6px rgba(0
 .match-teams-row .team {
   display: inline-flex; flex-direction: row; align-items: center; gap: 5px;
   min-width: 0; flex: 1;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   text-align: left;
+}
+.match-teams-row .team-name {
+  display: block; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .match-teams-row .team-crest,
 .match-teams-row .team-crest-fallback {
@@ -539,6 +542,82 @@ body.light .pred-done { background: rgba(29,26,18,.03); }
 /* ============================================================================
    МОИ ПРОГНОЗЫ
    ============================================================================ */
+/* --- Карточки прогнозов v2 --- */
+.pred-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 9px;
+  background: rgba(0,0,0,.18);
+}
+body.light .pred-card { background: rgba(29,26,18,.03); }
+.pred-card-latest {
+  border-color: rgba(230,196,108,.6);
+  background: var(--accent2);
+  box-shadow: var(--gold-glow);
+}
+.pred-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+.pred-card-league {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: var(--fw-bold); color: var(--hint);
+  text-transform: uppercase; letter-spacing: .5px;
+  min-width: 0; overflow: hidden; white-space: nowrap;
+}
+.pred-card-league .flag-icon { width: 14px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.pred-card-date { font-size: 10px; color: var(--hint); flex-shrink: 0; font-weight: var(--fw-med); }
+.pred-card-body { display: flex; align-items: center; gap: 10px; }
+.pred-card-teams { flex: 1; min-width: 0; }
+.pred-card-teams .match-teams-row { font-size: 12.5px; }
+.pred-card-teams .match-teams-row .team-crest,
+.pred-card-teams .match-teams-row .team-crest-fallback { width: 19px; height: 19px; }
+.pred-verdict {
+  flex-shrink: 0; text-align: center;
+  background: rgba(0,0,0,.30);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 7px 10px; min-width: 88px;
+}
+body.light .pred-verdict { background: rgba(29,26,18,.04); }
+.pred-verdict .pv-label {
+  display: block; font-size: 8px; text-transform: uppercase;
+  letter-spacing: .7px; color: var(--hint); margin-bottom: 3px;
+}
+.pred-verdict .pv-pick { display: block; font-size: 14px; font-weight: var(--fw-black); line-height: 1.15; }
+.pred-verdict .pv-real { display: block; font-size: 9.5px; color: var(--hint); margin-top: 3px; }
+.pred-verdict .pv-note { display: block; font-size: 9px; color: var(--hint); margin-top: 3px; }
+.pred-verdict .pv-pts {
+  display: inline-block; margin-top: 4px; font-size: 12px; font-weight: var(--fw-black);
+  padding: 2px 9px; border-radius: 12px; line-height: 1.3;
+}
+.pred-verdict.win  .pv-pick { color: var(--win); }
+.pred-verdict.win  .pv-pts  { background: rgba(110,220,140,.16); color: var(--win); border: 1px solid rgba(110,220,140,.4); }
+.pred-verdict.mid  .pv-pts  { background: rgba(230,196,108,.14); color: var(--accent); border: 1px solid rgba(230,196,108,.4); }
+.pred-verdict.lose .pv-pick { color: var(--lose); }
+.pred-verdict.lose .pv-pts  { background: rgba(229,96,90,.12); color: var(--lose); border: 1px solid rgba(229,96,90,.35); }
+.pred-card-actions { display: flex; gap: 7px; margin-top: 10px; }
+.pca-btn {
+  flex: 1; padding: 9px 10px; border-radius: 10px;
+  font-size: 11px; font-weight: var(--fw-bold);
+  text-transform: uppercase; letter-spacing: .6px;
+  cursor: pointer; transition: .16s;
+  border: 1px solid rgba(230,196,108,.5);
+  background: transparent; color: var(--accent);
+}
+.pca-btn:active { transform: scale(.97); background: var(--accent2); }
+.pca-btn.primary {
+  background: var(--gold-grad); color: var(--on-accent);
+  border-color: transparent; box-shadow: var(--gold-glow);
+}
+
+/* --- Видеообзоры (ScoreBat) --- */
+.video-wrap {
+  position: relative; height: 0; padding-bottom: 56.25%;
+  border-radius: 10px; overflow: hidden; background: #000;
+  margin-bottom: 8px;
+}
+.video-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video-title { font-size: 11px; color: var(--hint); text-align: center; margin: 0 0 12px; }
+
 .pred-row { border-radius: var(--r-md); padding: 14px; margin-bottom: 9px; }
 .pred-row .match { font-weight: var(--fw-med); margin-bottom: 5px; font-size: 14px; }
 .pred-row .meta {
@@ -591,11 +670,13 @@ body.light .pred-done { background: rgba(29,26,18,.03); }
   border-radius: 16px;
 }
 .nav-item .ico {
-  display: block;
-  width: 23px; height: 23px;
+  display: flex;
+  align-items: center; justify-content: center;
+  width: 24px; height: 24px;
   margin: 0 auto 4px;
   line-height: 0;
 }
+.nav-item .nav-label { display: block; text-align: center; }
 .tab-ico { display: block; width: 24px; height: 24px; background: currentColor;
   -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
 .tab-ico-rating      { -webkit-mask-image: url("icons/tab-rating.png");      mask-image: url("icons/tab-rating.png"); }
@@ -2447,8 +2528,9 @@ body.light .battle-timeline { background: rgba(29,26,18,.04); }
    ОБНОВЛЕНИЕ v2 — подиум, колесо фортуны, компактность, новые фичи
    ============================================================================ */
 
-/* --- Компактный список матчей --- */
+/* --- Компактный список матчей (адаптив) --- */
 .match-card { padding: 6px 9px; min-height: 38px; gap: 8px; margin-bottom: 5px; }
+.match-side { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .match-time { font-size: 9px; }
 .match-teams-row { font-size: 11.5px; gap: 8px; }
 .odds-btn { min-width: 38px; height: 33px; padding: 0 5px; border-radius: 8px; }
@@ -2457,6 +2539,28 @@ body.light .battle-timeline { background: rgba(29,26,18,.04); }
 .score-inline input { height: 30px; width: 26px; font-size: 14px; }
 .score-inline .score-save { width: 30px; height: 30px; font-size: 14px; }
 .pred-done-mini { width: 30px; height: 30px; font-size: 12px; }
+
+/* --- Телефон: карточка матча в две строки --- */
+@media (max-width: 480px) {
+  .match-card { flex-direction: column; align-items: stretch; gap: 7px; padding: 8px 10px; }
+  .match-head { flex-direction: row; align-items: center; gap: 8px; flex: none; }
+  .match-time {
+    font-size: 9.5px; line-height: 1.15;
+    background: rgba(0,0,0,.28); border: 1px solid var(--line);
+    border-radius: 7px; padding: 4px 6px; text-align: center;
+    min-width: 52px;
+  }
+  .match-teams-row { flex: 1; min-width: 0; font-size: 12.5px; }
+  .match-teams-row .team-crest, .match-teams-row .team-crest-fallback { width: 19px; height: 19px; }
+  .match-side { width: 100%; }
+  .match-side .odds-row { flex: 1; }
+  .match-side .odds-row .odds-btn { flex: 1; min-width: 0; height: 36px; }
+  .odds-btn .odds-sub { max-width: none; }
+  .match-side > .odds-btn { flex: 1; }
+  .match-side .score-inline { width: 100%; justify-content: flex-end; }
+  .match-side .match-locked { margin-left: auto; }
+  .match-side .pred-done-mini { margin-left: auto; }
+}
 
 /* --- Чип ближайшего матча (таймер) --- */
 .next-match-chip {
@@ -2748,33 +2852,28 @@ body.light .xh-item { background: rgba(29,26,18,.03); }
 <div class="nav" id="nav" style="display:none">
 
   <div class="nav-item" data-tab="rating">
-    <span class="ico">
-      <i class="tab-ico tab-ico-rating"></i>
-    Рейтинг
+    <span class="ico"><i class="tab-ico tab-ico-rating"></i></span>
+    <span class="nav-label">Рейтинг</span>
   </div>
 
   <div class="nav-item" data-tab="matches">
-    <span class="ico">
-      <i class="tab-ico tab-ico-matches"></i>
-    Матчи
+    <span class="ico"><i class="tab-ico tab-ico-matches"></i></span>
+    <span class="nav-label">Матчи</span>
   </div>
 
   <div class="nav-item" data-tab="predictions">
-    <span class="ico">
-      <i class="tab-ico tab-ico-predictions"></i>
-    Прогнозы
+    <span class="ico"><i class="tab-ico tab-ico-predictions"></i></span>
+    <span class="nav-label">Прогнозы</span>
   </div>
 
   <div class="nav-item" data-tab="shop">
-    <span class="ico">
-      <i class="tab-ico tab-ico-shop"></i>
-    Магазин
+    <span class="ico"><i class="tab-ico tab-ico-shop"></i></span>
+    <span class="nav-label">Магазин</span>
   </div>
 
   <div class="nav-item" data-tab="profile">
-    <span class="ico">
-      <i class="tab-ico tab-ico-profile"></i>
-    Профиль
+    <span class="ico"><i class="tab-ico tab-ico-profile"></i></span>
+    <span class="nav-label">Профиль</span>
   </div>
 
 </div>
@@ -2826,7 +2925,7 @@ function matchTeamsHtml(match) {
   var a = match.awayTeam;
 
   if (!h || !a) {
-    var parts = String(match.matchName || "").split(/\s*[-–—]\s*/);
+    var parts = String(match.matchName || "").split(/\s+[-–—]\s+/);
     h = { name: (parts[0] || "").trim() };
     a = { name: (parts[1] || "").trim() };
   }
@@ -2836,9 +2935,9 @@ function matchTeamsHtml(match) {
 
   return '' +
     '<div class="match-teams-row">' +
-      '<span class="team">' + teamCrestHtml(h) + escapeHtml(hName) + '</span>' +
+      '<span class="team">' + teamCrestHtml(h) + '<span class="team-name">' + escapeHtml(hName) + '</span></span>' +
       '<span class="vs">—</span>' +
-      '<span class="team">' + teamCrestHtml(a) + escapeHtml(aName) + '</span>' +
+      '<span class="team">' + '<span class="team-name">' + escapeHtml(aName) + '</span>' + teamCrestHtml(a) + '</span>' +
     '</div>';
 }
 
@@ -5024,7 +5123,7 @@ function renderMatchesList(leagueCode) {
       if (new Date().getTime() >= matchTs) isStarted = true;
     }
 
-    var parts = String(m.matchName).split(/\s*[-–—]\s*/);
+    var parts = String(m.matchName).split(/\s+[-–—]\s+/);
     var team1 = m.homeTeam ? (m.homeTeam.shortName || m.homeTeam.name) : (parts[0] || '');
     var team2 = m.awayTeam ? (m.awayTeam.shortName || m.awayTeam.name) : (parts[1] || '');
 
@@ -5043,6 +5142,7 @@ function renderMatchesList(leagueCode) {
     html += '</div>';
 
     // Правая часть
+    html += '<div class="match-side">';
     if (already) {
       html += '<div class="odds-btn selected" style="pointer-events:none;cursor:default">' +
         '<span class="odds-label">' + escapeHtml(m.userPrediction.outcome) + '</span>' +
@@ -5074,6 +5174,7 @@ function renderMatchesList(leagueCode) {
           '<button class="score-save" data-save="1">✓</button>' +
         '</div>';
     }
+    html += '</div>';
 
     html += '</div>';
   });
@@ -5222,36 +5323,48 @@ function renderMyPredictions(app) {
                        p.realScore !== undefined &&
                        p.realScore !== '';
 
-        var resultHtml;
-        if (isPlayed) {
-          var pts = (p.points === null || p.points === undefined) ? 0 : Number(p.points);
-          var color = pts >= 5 ? 'var(--win)' :
-                      (pts >= 3 ? 'var(--accent)' :
-                      (pts > 0 ? 'var(--accent)' : 'var(--lose)'));
-          resultHtml =
-            '<div class="result">Реальный счёт: <b>' + escapeHtml(p.realScore) + '</b> · ' +
-            'Очки: <b style="color:' + color + '">+' + pts + '</b></div>' +
-            '<button class="gif-btn" ' +
-              'onclick="openHighlights(\'' + escapeHtml(p.matchName).replace(/'/g, "\\'") + '\', \'' +
-              escapeHtml(p.realScore) + '\', \'' + escapeHtml(p.leagueCode || '') + '\')">' +
-              '🎬 Хайлайты' +
-            '</button>';
-        } else {
-          resultHtml = '<div class="result pending">Матч не сыгран</div>';
-        }
+        var pts = (p.points === null || p.points === undefined) ? 0 : Number(p.points);
+        var verdictCls = !isPlayed ? 'pending' : (pts >= 5 ? 'win' : (pts > 0 ? 'mid' : 'lose'));
 
-        html += '<div class="pred-row' + (isLatest ? ' pred-row-latest' : '') + '">' +
+        var dtParts = String(p.dateStr || '').split(' ');
+        var dParts = (dtParts[0] || '').split('.');
+        var shortDate = (dParts.length === 3 ? dParts[0] + '.' + dParts[1] : (dtParts[0] || '')) +
+          (dtParts[1] ? ' · ' + dtParts[1] : '');
+
+        var flagHtml = p.leagueFlagClass
+          ? '<span class="flag-icon ' + escapeHtml(p.leagueFlagClass) + '"></span>'
+          : (p.leagueEmoji ? escapeHtml(p.leagueEmoji) + ' ' : '');
+
+        var verdictHtml =
+          '<div class="pred-verdict ' + verdictCls + '">' +
+            '<span class="pv-label">Мой прогноз</span>' +
+            '<span class="pv-pick">' + escapeHtml(p.outcome) + ' · ' + escapeHtml(p.score) + '</span>' +
+            (isPlayed
+              ? '<span class="pv-real">Счёт ' + escapeHtml(p.realScore) + '</span>' +
+                '<span class="pv-pts">+' + pts + '</span>'
+              : '<span class="pv-note">ожидает матча</span>') +
+          '</div>';
+
+        html += '<div class="pred-card' + (isLatest ? ' pred-card-latest' : '') + '">' +
           (isLatest ? '<div class="pred-latest-badge">Последний прогноз</div>' : '') +
-          '<div class="pred-teams">' + matchTeamsHtml(p) + '</div>' +
-          '<div class="meta">' + escapeHtml(p.leagueName) + ' · ' + escapeHtml(p.dateStr) + '</div>' +
-          '<div class="guess">Ваш прогноз: <b>' + escapeHtml(p.outcome) +
-            '    ' + escapeHtml(p.score) + '</b></div>' +
-          resultHtml +
-          '<button class="compare-btn" ' +
-            'data-match="' + escapeHtml(p.matchName) + '" ' +
-            'data-league="' + escapeHtml(p.leagueCode || '') + '">' +
-            'Сравнить матч' +
-          '</button>' +
+          '<div class="pred-card-top">' +
+            '<span class="pred-card-league">' + flagHtml + escapeHtml(p.leagueName) + '</span>' +
+            '<span class="pred-card-date">' + escapeHtml(shortDate) + '</span>' +
+          '</div>' +
+          '<div class="pred-card-body">' +
+            '<div class="pred-card-teams">' + matchTeamsHtml(p) + '</div>' +
+            verdictHtml +
+          '</div>' +
+          '<div class="pred-card-actions">' +
+            (isPlayed
+              ? '<button class="pca-btn" ' +
+                  'onclick="openHighlights(\'' + escapeHtml(p.matchName).replace(/'/g, "\\'") + '\', \'' +
+                  escapeHtml(p.realScore) + '\', \'' + escapeHtml(p.leagueCode || '') + '\')">▶ Видеообзор</button>'
+              : '') +
+            '<button class="pca-btn primary compare-btn" ' +
+              'data-match="' + escapeHtml(p.matchName) + '" ' +
+              'data-league="' + escapeHtml(p.leagueCode || '') + '">Сравнить матч</button>' +
+          '</div>' +
         '</div>';
       });
 
@@ -5385,10 +5498,10 @@ function openHighlights(matchName, realScore, leagueCode) {
   var body = document.getElementById('highlightsModalBody');
   body.innerHTML =
     '<div class="modal-head">' +
-      '<h3>🎬 ' + escapeHtml(matchName) + ' · ' + escapeHtml(realScore) + '</h3>' +
+      '<h3>▶ ' + escapeHtml(matchName) + '</h3>' +
       '<button class="modal-close" onclick="closeHighlights()">×</button>' +
     '</div>' +
-    '<div class="modal-sub">Хайлайты голов</div>' +
+    '<div class="modal-sub">Видеообзоры матча</div>' +
     '<div id="highlightsBody">' +
       '<div class="loader"><div class="spinner"></div></div>' +
     '</div>';
@@ -5401,28 +5514,24 @@ function openHighlights(matchName, realScore, leagueCode) {
       if (!el) return;
       if (!res || !res.ok) {
         el.innerHTML = '<div class="cmp-empty">' +
-          escapeHtml((res && res.error) || 'Не удалось загрузить хайлайты') + '</div>';
+          escapeHtml((res && res.error) || 'Не удалось загрузить видеообзоры') + '</div>';
         return;
       }
-      var gifs = res.gifs || [];
-      if (!gifs.length) {
-        el.innerHTML = '<div class="cmp-empty">Хайлайты не найдены</div>';
+      var videos = res.videos || [];
+      if (!videos.length) {
+        el.innerHTML = '<div class="cmp-empty">Видеообзоры появятся позже — обычно в течение суток после матча</div>';
         return;
       }
-      var html = '<div class="gif-grid">';
-      gifs.forEach(function (g) {
-        if (g.mp4) {
-          html += '<video class="gif-item" autoplay loop muted playsinline ' +
-            'poster="' + escapeHtml(g.preview || '') + '">' +
-            '<source src="' + escapeHtml(g.mp4) + '" type="video/mp4">' +
-            '</video>';
-        } else if (g.preview) {
-          html += '<img class="gif-item" src="' + escapeHtml(g.preview) + '" ' +
-            'alt="' + escapeHtml(g.title) + '" loading="lazy">';
+      var html = '';
+      videos.forEach(function (v) {
+        html += '<div class="video-wrap">' +
+          '<iframe src="' + escapeHtml(v.embed) + '" allowfullscreen ' +
+          'allow="autoplay; fullscreen; picture-in-picture" loading="lazy"></iframe>' +
+        '</div>';
+        if (v.title) {
+          html += '<div class="video-title">' + escapeHtml(v.title) + '</div>';
         }
       });
-      html += '</div>';
-      html += '<div class="gif-credit">Powered by GIPHY</div>';
       el.innerHTML = html;
     })
     .catch(function (err) {

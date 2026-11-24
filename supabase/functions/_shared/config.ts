@@ -8,7 +8,6 @@ export const BOT_USERNAME = (Deno.env.get('BOT_USERNAME') ?? 'devsport_bot').rep
 export const ADMIN_SECRET = Deno.env.get('ADMIN_SECRET') ?? '';
 export const ADMIN_CHAT_ID = Deno.env.get('ADMIN_CHAT_ID') ?? '';
 export const FOOTBALL_API_KEY = Deno.env.get('FOOTBALL_API_KEY') ?? '';
-export const GIPHY_API_KEY = Deno.env.get('GIPHY_API_KEY') ?? '';
 export const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 export const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 // Публичный URL Mini App (кнопка в Telegram). После переноса админки:

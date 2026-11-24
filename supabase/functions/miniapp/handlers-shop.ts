@@ -5,8 +5,8 @@
 // ============================================================
 
 import { db } from '../_shared/db.ts';
-import { GIPHY_API_KEY } from '../_shared/config.ts';
 import { enc, getPeriodKey } from '../_shared/util.ts';
+import { TEAM_TRANSLATIONS } from '../_shared/translations.ts';
 import { checkRateLimit } from '../_shared/core.ts';
 import { getXPProfile, addXP, spendXP, wasXPAwarded, logXPAward } from '../_shared/gamification.ts';
 
@@ -15,7 +15,6 @@ const WHEEL_SEGMENTS = [25, 100, 50, 200, 75, 150, 25, 300];
 const WHEEL_WEIGHTS = [22, 12, 20, 6, 16, 8, 12, 4];
 const WHEEL_PAID_PRICE = 100;
 const CARD_SELL_MULT: Record<string, number> = { common: 1, rare: 2, epic: 3, legendary: 5, mythic: 8 };
-const GIPHY_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 часа
 
 function rollRarity(weights: Record<string, number>): string {
   const keys = Object.keys(weights);
@@ -251,50 +250,125 @@ export async function getCollection(_chatId: unknown, userName: unknown) {
 }
 
 // ------------------------------------------------------------
-//  getMatchHighlights (GIPHY) — кэш 24ч
+//  getMatchHighlights (ScoreBat — реальные видеообзоры) — кэш 1ч
 // ------------------------------------------------------------
-const giphyCache = new Map<string, { at: number; data: any }>();
+const SCOREBAT_URL = 'https://www.scorebat.com/video-api/v3/';
+const SB_FEED_TTL = 60 * 60 * 1000;
+let sbFeedCache: { at: number; data: any[] } | null = null;
+let sbFeedPromise: Promise<any[]> | null = null;
 
-export async function getMatchHighlights(_leagueCode: unknown, matchName: unknown, realScore: unknown) {
+const TOKEN_STOP = new Set([
+  'fc', 'afc', 'cf', 'sc', 'ac', 'cd', 'ud', 'rc', 'rcd', 'club', 'de', 'fk', 'sk',
+  'kv', 'vfb', 'the', 'and', 'city', '04',
+]);
+const TOKEN_ALIASES: Record<string, string[]> = {
+  'internazionale': ['inter'],
+  'munchen': ['munich'],
+  'paris': ['psg'], 'saint': ['psg'], 'germain': ['psg'],
+  'hotspur': ['spurs'],
+  'wanderers': ['wolves'],
+  'hotspurs': ['spurs'],
+};
+
+function foldDiacritics(s: string): string {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+function tokenize(s: string): string[] {
+  const out = new Set<string>();
+  for (const t of foldDiacritics(s).toLowerCase().split(/[^a-z0-9а-я]+/)) {
+    if (t.length >= 2 && !TOKEN_STOP.has(t)) out.add(t);
+  }
+  return Array.from(out);
+}
+
+let ruToEn: Record<string, string> | null = null;
+function teamTokensRuToEn(ruName: string): string[] {
+  if (!ruToEn) {
+    ruToEn = {};
+    for (const en of Object.keys(TEAM_TRANSLATIONS)) {
+      const ru = (TEAM_TRANSLATIONS as any)[en];
+      if (ru && !ruToEn[ru]) ruToEn[ru] = en;
+    }
+  }
+  const en = ruToEn[ruName] || ruName;
+  const toks = tokenize(en);
+  // Альтернативные варианты токенов (прозвища клубов)
+  const expanded = new Set<string>(toks);
+  for (const t of toks) {
+    const al = TOKEN_ALIASES[t];
+    if (al) al.forEach((a) => expanded.add(a));
+  }
+  return Array.from(expanded);
+}
+
+function countTokenMatches(teamTokens: string[], titleSet: Set<string>): number {
+  let n = 0;
+  for (const t of teamTokens) if (titleSet.has(t)) n++;
+  return n;
+}
+
+async function getScorebatFeed(): Promise<any[]> {
+  if (sbFeedCache && Date.now() - sbFeedCache.at < SB_FEED_TTL) return sbFeedCache.data;
+  if (sbFeedPromise) return sbFeedPromise;
+  sbFeedPromise = (async () => {
+    try {
+      const resp = await fetch(SCOREBAT_URL, { signal: AbortSignal.timeout(15000) });
+      if (!resp.ok) return [];
+      const data = await resp.json();
+      const feed = Array.isArray(data.response) ? data.response : [];
+      sbFeedCache = { at: Date.now(), data: feed };
+      return feed;
+    } catch {
+      return sbFeedCache?.data ?? [];
+    } finally {
+      sbFeedPromise = null;
+    }
+  })();
+  return sbFeedPromise;
+}
+
+export async function getMatchHighlights(_leagueCode: unknown, matchName: unknown, _realScore: unknown) {
   try {
     const cleanMatch = String(matchName || '').trim();
-    const cleanScore = String(realScore || '').trim();
-    if (!cleanMatch || !cleanScore) return { ok: false, error: 'Матч не сыгран' };
+    if (!cleanMatch) return { ok: false, error: 'Не указан матч' };
 
-    const parts = cleanMatch.split(/\s*[-–—]\s*/);
-    const home = (parts[0] || '').trim();
-    const away = (parts[1] || '').trim();
-    const scoreParts = cleanScore.split('-');
-    const hScore = parseInt(scoreParts[0], 10) || 0;
-    const aScore = parseInt(scoreParts[1], 10) || 0;
+    const parts = cleanMatch.split(/\s+[-–—]\s+/);
+    const homeRu = (parts[0] || '').trim();
+    const awayRu = (parts[1] || '').trim();
+    if (!homeRu || !awayRu) return { ok: false, error: 'Не указан матч' };
 
-    const winner = hScore > aScore ? home : (aScore > hScore ? away : home);
-    const query = encodeURIComponent(winner + ' goal football');
+    const homeTokens = teamTokensRuToEn(homeRu);
+    const awayTokens = teamTokensRuToEn(awayRu);
+    if (!homeTokens.length || !awayTokens.length) return { ok: true, videos: [] };
 
-    const cacheKey = 'giphy_' + hashString(cleanMatch + '||' + cleanScore);
-    const cached = giphyCache.get(cacheKey);
-    if (cached && Date.now() - cached.at < GIPHY_CACHE_TTL) return cached.data;
+    const feed = await getScorebatFeed();
+    if (!feed.length) return { ok: true, videos: [] };
 
-    if (!GIPHY_API_KEY) return { ok: false, error: 'GIPHY_API_KEY не настроен' };
+    let best: any = null;
+    let bestScore = 0;
+    for (const item of feed) {
+      const titleSet = new Set(tokenize(String(item.title || '').split('|')[0]));
+      if (!titleSet.size) continue;
+      const h = countTokenMatches(homeTokens, titleSet);
+      const a = countTokenMatches(awayTokens, titleSet);
+      if (h === 0 || a === 0) continue;
+      const score = h + a;
+      if (score > bestScore) { bestScore = score; best = item; }
+    }
 
-    const url = 'https://api.giphy.com/v1/gifs/search?api_key=' + GIPHY_API_KEY +
-      '&q=' + query + '&limit=3&rating=g&lang=en';
+    if (!best) return { ok: true, videos: [] };
 
-    const resp = await fetch(url);
-    if (!resp.ok) return { ok: false, error: 'GIPHY недоступен' };
-
-    const data = await resp.json();
-    const gifs = (data.data || [])
-      .map((g: any) => {
-        const mp4 = g.images && g.images.fixed_height && g.images.fixed_height.mp4;
-        const preview = g.images && g.images.fixed_height_small && g.images.fixed_height_small.url;
-        return { id: g.id, title: g.title || '', mp4: mp4 || null, preview: preview || null, url: g.url || '' };
+    const videos = (Array.isArray(best.videos) ? best.videos : [])
+      .map((v: any) => {
+        const m = String(v.embed || '').match(/src='([^']+)'/);
+        const src = m ? m[1] : '';
+        if (src.indexOf('https://www.scorebat.com/embed/') !== 0) return null;
+        return { embed: src, title: String(v.title || '').trim() };
       })
-      .filter((g: any) => g.mp4 || g.preview);
+      .filter(Boolean);
 
-    const result = { ok: true, gifs, query: winner };
-    giphyCache.set(cacheKey, { at: Date.now(), data: result });
-    return result;
+    return { ok: true, videos, matchTitle: String(best.title || '').split('|')[0].trim() };
   } catch (e: any) { return { ok: false, error: e.message }; }
 }
 
