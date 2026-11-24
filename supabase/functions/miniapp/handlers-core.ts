@@ -114,7 +114,7 @@ export async function getLeagueMatches(leagueCode: unknown, _chatId: unknown, us
         time: m.utc_date ? formatDateMsk(m.utc_date, 'dd.MM HH:mm') : '',
         leagueCode: code, tourNum: currentTour, matchDateStr: m.utc_date || null,
         realScore: m.real_score || null, homeTeam: teams.home, awayTeam: teams.away,
-        userPrediction: up ? { outcome: up.outcome, score: up.score } : null,
+        userPrediction: up ? { outcome: up.outcome, score: up.score, isJoker: up.is_joker === true } : null,
       });
     }
     result.sort((a, b) => String(a.matchDateStr || '').localeCompare(String(b.matchDateStr || '')));

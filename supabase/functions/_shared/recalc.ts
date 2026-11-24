@@ -71,7 +71,8 @@ export async function recalcUserPoints(userName: string): Promise<void> {
       if (!real) continue;
       const basePts = calcPointsForPrediction(p.outcome, p.score, real).points;
       const jokerMult = p.is_joker === true ? 2 : 1;
-      const pts = basePts * jokerMult; // джокер x2 к рейтинговым очкам и XP
+      // Джокер удваивает ТОЛЬКО XP; рейтинговые очки нетронуты: 5/3/1
+      const pts = basePts;
       total += pts;
       perLeague[p.league_code] = (perLeague[p.league_code] || 0) + pts;
       await awardHitXP(clean, p.league_code, p.match_norm, basePts, real, jokerMult);

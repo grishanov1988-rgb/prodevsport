@@ -538,6 +538,21 @@ body.light .score-inline input { background: rgba(29,26,18,.04); }
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   box-shadow: var(--gold-glow);
 }
+/* 🃏 Джокер в строке счёта */
+.joker-toggle {
+  width: 38px; height: 38px; padding: 0; margin-left: 2px; flex-shrink: 0;
+  background: rgba(168,85,247,.12); border: 1px dashed rgba(168,85,247,.55);
+  border-radius: 10px; font-size: 17px; cursor: pointer; line-height: 1;
+  opacity: .75; transition: all .2s;
+}
+.joker-toggle.active {
+  opacity: 1; border-style: solid;
+  background: linear-gradient(135deg, rgba(168,85,247,.35), rgba(255,110,199,.25));
+  border-color: #a855f7;
+  box-shadow: 0 0 12px rgba(168,85,247,.55);
+  transform: scale(1.06);
+}
+.my-pick .mp-joker { font-size: 13px; margin-left: 2px; }
 .score-inline .score-save:active { transform: scale(.92); }
 
 .pred-done-mini {
@@ -2675,6 +2690,7 @@ body.light .battle-timeline { background: rgba(29,26,18,.04); }
   .score-inline input { width: 30px; height: 30px; font-size: 14px; border-radius: 8px; }
   .score-inline .score-colon { font-size: 13px; }
   .score-inline .score-save { width: 34px; height: 30px; margin-left: 2px; border-radius: 8px; font-size: 14px; }
+  .joker-toggle { width: 30px; height: 30px; font-size: 14px; border-radius: 8px; }
   .match-locked { font-size: 9px; padding: 4px 7px; }
   .my-pick { padding: 4px 8px; gap: 4px; border-radius: 8px; }
   .my-pick .mp-outcome, .my-pick .mp-score { font-size: 11px; }
@@ -3430,13 +3446,13 @@ function renderShopContent() {
     '<div class="shop-special" id="jokerShopBox">' +
       '<div class="shop-special-icon">🃏</div>' +
       '<div class="shop-special-body">' +
-        '<div class="shop-special-name">Джокер ×2</div>' +
+        '<div class="shop-special-name">Джокер ×2 XP</div>' +
         '<div class="shop-special-desc">' +
           (joker ? (
             joker.usedThisWeek
               ? '⏳ Уже использован на этой неделе'
               : 'В наличии: ' + joker.jokersCount + ' шт.'
-          ) : 'Удвоит очки за один матч') +
+          ) : 'Удвоит XP за угаданный матч') +
         '</div>' +
         '<div class="shop-special-price">' + (jokerCanBuy ? '' : '🔒 ') + '500 XP</div>' +
       '</div>' +
@@ -5317,9 +5333,15 @@ function loadMatches(leagueCode) {
   if (!list) return;
   list.innerHTML = skelMatchCards(4);
 
-  callServer('miniApp_getLeagueMatches', leagueCode, CHAT_ID, USER_NAME)
-    .then(function(res) {
+  Promise.all([
+    callServer('miniApp_getLeagueMatches', leagueCode, CHAT_ID, USER_NAME),
+    callServer('miniApp_getJokerStatus', CHAT_ID, USER_NAME)
+  ])
+    .then(function(results) {
+      var res = results[0];
+      var jk = results[1];
       if (!res || !res.ok) throw new Error((res && res.error) || 'Ошибка');
+      STATE.jokerStatus = (jk && jk.ok) ? jk : null;
       if (!STATE.matches) STATE.matches = {};
       STATE.matches[leagueCode] = res.matches || [];
       renderMatchesList(leagueCode);
@@ -5385,6 +5407,7 @@ function renderMatchesList(leagueCode) {
       html += '<div class="my-pick">' +
         '<span class="mp-outcome">' + escapeHtml(m.userPrediction.outcome) + '</span>' +
         '<span class="mp-score">' + escapeHtml(m.userPrediction.score) + '</span>' +
+        (m.userPrediction.isJoker ? '<span class="mp-joker" title="Прогноз с джокером">🃏</span>' : '') +
         '<span class="mp-check">✓</span>' +
       '</div>';
     } else if (isStarted) {
@@ -5410,6 +5433,9 @@ function renderMatchesList(leagueCode) {
           '<span class="score-colon">:</span>' +
           '<input type="tel" inputmode="numeric" maxlength="2" placeholder="0" id="scoreAway-' + i + '">' +
           '<button class="score-save" data-save="1">✓</button>' +
+          (STATE.jokerStatus && STATE.jokerStatus.canUseNow
+            ? '<button class="joker-toggle" id="jokerTgl-' + i + '" title="Джокер: удвоит XP за угаданный исход/счёт">🃏</button>'
+            : '') +
         '</div>';
     }
     html += '</div>';
@@ -5466,7 +5492,24 @@ function renderMatchesList(leagueCode) {
           showToast('Введите счёт', 'error');
           return;
         }
-        savePrediction(m.matchName, leagueCode, s.outcome, h + '-' + a, false);
+        var jkTgl = document.getElementById('jokerTgl-' + idx);
+        var useJoker = !!(jkTgl && jkTgl.classList.contains('active'));
+        if (useJoker) {
+          if (!confirm('🃏 Использовать Джокер на матч «' + m.matchName + '»?\n\nУгаданный исход/счёт принесёт ВДВОЕ больше XP (рейтинговые очки 5/3/1 не меняются).')) {
+            return;
+          }
+        }
+        savePrediction(m.matchName, leagueCode, s.outcome, h + '-' + a, useJoker);
+      });
+    }
+
+    // 🃏 Переключатель джокера в строке счёта
+    var jkBtn = card.querySelector('.joker-toggle');
+    if (jkBtn) {
+      jkBtn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        jkBtn.classList.toggle('active');
+        haptic('medium');
       });
     }
   });
@@ -5501,7 +5544,8 @@ function savePrediction(matchName, leagueCode, outcome, score, useJoker) {
         if (arr[i].matchName === matchName) {
           arr[i].userPrediction = {
             outcome: outcome,
-            score: score.replace(/\s/g, '').replace(/:/g, '-')
+            score: score.replace(/\s/g, '').replace(/:/g, '-'),
+            isJoker: !!useJoker
           };
           break;
         }
