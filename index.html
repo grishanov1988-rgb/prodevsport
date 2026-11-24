@@ -624,9 +624,9 @@ body.light .pred-done { background: rgba(29,26,18,.03); }
 /* --- Карточки прогнозов v2 --- */
 .pred-card {
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 12px;
-  margin-bottom: 9px;
+  border-radius: 12px;
+  padding: 8px 10px;
+  margin-bottom: 7px;
   background: rgba(0,0,0,.18);
 }
 body.light .pred-card { background: rgba(29,26,18,.03); }
@@ -635,53 +635,61 @@ body.light .pred-card { background: rgba(29,26,18,.03); }
   background: var(--accent2);
   box-shadow: var(--gold-glow);
 }
-.pred-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+.pred-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
 .pred-card-league {
   display: inline-flex; align-items: center; gap: 5px;
-  font-size: 10px; font-weight: var(--fw-bold); color: var(--hint);
+  font-size: 9px; font-weight: var(--fw-bold); color: var(--hint);
   text-transform: uppercase; letter-spacing: .5px;
   min-width: 0; overflow: hidden; white-space: nowrap;
 }
-.pred-card-league .flag-icon { width: 14px; height: 10px; border-radius: 2px; flex-shrink: 0; }
-.pred-card-date { font-size: 10px; color: var(--hint); flex-shrink: 0; font-weight: var(--fw-med); }
-.pred-card-body { display: flex; align-items: center; gap: 10px; }
+.pred-card-league .flag-icon { width: 13px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+.pred-card-date { font-size: 9px; color: var(--hint); flex-shrink: 0; font-weight: var(--fw-med); }
+.pred-card-body { display: flex; align-items: center; gap: 8px; }
 .pred-card-teams { flex: 1; min-width: 0; }
-.pred-card-teams .match-teams-row { font-size: 12.5px; }
+.pred-card-teams .match-teams-row { font-size: 12px; gap: 5px; }
 .pred-card-teams .match-teams-row .team-crest,
-.pred-card-teams .match-teams-row .team-crest-fallback { width: 19px; height: 19px; }
+.pred-card-teams .match-teams-row .team-crest-fallback { width: 16px; height: 16px; }
 .pred-verdict {
   flex-shrink: 0; text-align: center;
   background: rgba(0,0,0,.30);
   border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 6px 9px; min-width: 84px;
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  border-radius: 8px;
+  padding: 4px 7px; min-width: 72px;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
 }
 body.light .pred-verdict { background: rgba(29,26,18,.04); }
 .pred-verdict .pv-label {
-  font-size: 8px; text-transform: uppercase;
-  letter-spacing: .7px; color: var(--hint);
+  font-size: 7.5px; text-transform: uppercase;
+  letter-spacing: .6px; color: var(--hint);
 }
-.pred-verdict .pv-pick { font-size: 14px; font-weight: var(--fw-black); line-height: 1.15; }
-.pred-verdict .pv-real { font-size: 9.5px; color: var(--hint); }
-.pred-verdict .pv-note { font-size: 9px; color: var(--hint); }
+.pred-verdict .pv-pick { font-size: 12.5px; font-weight: var(--fw-black); line-height: 1.15; }
+.pred-verdict .pv-real { font-size: 9px; color: var(--hint); }
+.pred-verdict .pv-note { font-size: 8.5px; color: var(--hint); }
 .pred-verdict .pv-pts {
-  font-size: 11px; font-weight: var(--fw-black);
-  padding: 1px 8px; border-radius: 10px; line-height: 1.4;
+  font-size: 10px; font-weight: var(--fw-black);
+  padding: 0 7px; border-radius: 9px; line-height: 1.4;
 }
 .pred-verdict.win  .pv-pick { color: var(--win); }
 .pred-verdict.win  .pv-pts  { background: rgba(110,220,140,.16); color: var(--win); border: 1px solid rgba(110,220,140,.4); }
 .pred-verdict.mid  .pv-pts  { background: rgba(230,196,108,.14); color: var(--accent); border: 1px solid rgba(230,196,108,.4); }
 .pred-verdict.lose .pv-pick { color: var(--lose); }
 .pred-verdict.lose .pv-pts  { background: rgba(229,96,90,.12); color: var(--lose); border: 1px solid rgba(229,96,90,.35); }
-.pred-card-actions { display: flex; gap: 6px; margin-top: 9px; justify-content: flex-end; }
+.pred-card .pred-latest-badge {
+  display: inline-block; font-size: 8.5px; font-weight: var(--fw-black);
+  color: var(--on-accent);
+  background: var(--gold-grad);
+  padding: 3px 9px; border-radius: 20px; margin-bottom: 6px;
+  text-transform: uppercase; letter-spacing: .7px;
+}
+.pred-card-actions { display: flex; gap: 6px; margin-top: 6px; justify-content: flex-end; }
 .pca-btn {
-  flex: none; padding: 6px 12px; border-radius: 8px;
-  font-size: 10px; font-weight: var(--fw-bold);
+  flex: none; padding: 4px 10px; border-radius: 7px;
+  font-size: 9px; font-weight: var(--fw-bold);
   text-transform: uppercase; letter-spacing: .5px;
   cursor: pointer; transition: .16s;
   border: 1px solid rgba(230,196,108,.5);
   background: transparent; color: var(--accent);
+  line-height: 1.5; white-space: nowrap;
 }
 .pca-btn:active { transform: scale(.97); background: var(--accent2); }
 .pca-btn.primary {
@@ -1034,15 +1042,8 @@ body.light .stat-cmp-item { background: rgba(29,26,18,.03); }
 .cmp-chip.chip-x  { background: rgba(255,255,255,.06); color: var(--hint); border: 1px solid var(--line); }
 .cmp-chip.chip-p2 { background: rgba(229,96,90,.13); color: #e5605a; border: 1px solid rgba(229,96,90,.35); }
 
-.compare-btn {
-  margin-top: 12px; width: 100%;
-  padding: 11px 14px; border-radius: 12px;
-  background: transparent; border: 1px solid rgba(230,196,108,.5);
-  color: var(--accent); font-weight: var(--fw-bold); font-size: 13px;
-  cursor: pointer; transition: .16s;
-  text-transform: uppercase; letter-spacing: .8px;
-}
-.compare-btn:active { transform: scale(.98); background: var(--accent2); }
+/* .compare-btn — стили задаёт .pca-btn (кнопка в карточке прогноза);
+   старое полноростовое правило удалено, оно растягивало кнопку на всю ширину */
 
 /* ============================================================================
    СТАТИСТИКА ПРОГНОЗОВ
