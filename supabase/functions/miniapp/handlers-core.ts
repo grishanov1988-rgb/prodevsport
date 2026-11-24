@@ -68,13 +68,23 @@ export async function getLeagueMatches(leagueCode: unknown, _chatId: unknown, us
     });
     const tourNumbers = Object.keys(toursMap).map(Number).sort((a, b) => a - b);
     if (!tourNumbers.length) return { ok: true, matches: [] };
+    // Текущий тур = ПЕРВЫЙ (по возрастанию) активный тур:
+    //  — есть матч, который идёт сейчас или ещё не начался (дата + 4ч в будущем), или
+    //  — есть недавно завершившийся матч без счёта (запас ~30ч на подтягивание парсером).
+    // Перенесённые матчи месячной давности тур не держат: переносимся дальше.
+    // (GAS-версия шла с конца списка и цепляла последний тур с незакрытым счётом —
+    //  с полным календарём это давал 18-й тур АПЛ вместо текущего.)
     const now = Date.now();
+    const hasValidScore = (s: unknown) => !!s && /^\d+\s*[-:]\s*\d+$/.test(String(s));
+    const SCORE_GRACE_MS = 30 * 3600 * 1000;
     let currentTour: number | null = null;
-    for (let i = tourNumbers.length - 1; i >= 0; i--) {
-      const tNum = tourNumbers[i];
+    for (const tNum of tourNumbers) {
       const isTourActive = toursMap[tNum].some((m: any) => {
-        if (!m.real_score || !/^\d+\s*[-:]\s*\d+$/.test(String(m.real_score))) return true;
-        if (m.utc_date) { const t = new Date(m.utc_date).getTime(); if (t + 4 * 3600 * 1000 > now) return true; }
+        if (!m.utc_date) return !hasValidScore(m.real_score);
+        const t = new Date(m.utc_date).getTime();
+        if (isNaN(t)) return !hasValidScore(m.real_score);
+        if (t + 4 * 3600 * 1000 > now) return true;
+        if (!hasValidScore(m.real_score) && t + SCORE_GRACE_MS > now) return true;
         return false;
       });
       if (isTourActive) { currentTour = tNum; break; }
