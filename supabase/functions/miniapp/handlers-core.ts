@@ -201,7 +201,10 @@ export async function savePrediction(payload: any) {
 export async function getUserPredictions(_chatId: unknown, userName: unknown) {
   try {
     const cleanUser = String(userName || '').trim();
-    const preds = await db(`predictions?user_name=eq.${enc(cleanUser)}&select=id,user_name,league_code,match_name,match_norm,outcome,score,saved_at&order=id.desc&limit=25`) ?? [];
+    const allowedLeagues = new Set(Object.keys(LEAGUES));
+    const preds = (await db(`predictions?user_name=eq.${enc(cleanUser)}&select=id,user_name,league_code,match_name,match_norm,outcome,score,saved_at&order=id.desc&limit=100`) ?? [])
+      .filter((p: any) => allowedLeagues.has(p.league_code))
+      .slice(0, 25);
     if (!preds.length) return { ok: true, predictions: [] };
     const leagueSet: Record<string, boolean> = {}; const normsSet: Record<string, boolean> = {};
     preds.forEach((p: any) => { leagueSet[p.league_code] = true; if (p.match_norm) normsSet[p.match_norm] = true; });
