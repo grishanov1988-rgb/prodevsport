@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
 <script src="config.js"></script>
 <style>
 /* ============================================================================
@@ -7105,11 +7106,19 @@ function renderBattleResult(result, xp) {
   html += '<div class="pitch-box right"></div>';
 
   // ⚽ Живые футболисты 11v11 (схема 4-3-3, твоя команда атакует вправо)
-  var meSlots = (me.team && me.team.slots) || [];
-  var oppSlots = (opp.team && opp.team.slots) || [];
-  for (var pi = 0; pi < 11; pi++) {
-    html += bpPlayerToken_(meSlots[pi], 'me', pi);
-    html += bpPlayerToken_(oppSlots[pi], 'opp', pi);
+  // В 3D-режиме DOM-фишки не нужны — сразу WebGL-сцена
+  var use3d = (function () {
+    if (!window.THREE) return false;
+    try { var c = document.createElement('canvas');
+      return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return false; }
+  })();
+  if (!use3d) {
+    var meSlots = (me.team && me.team.slots) || [];
+    var oppSlots = (opp.team && opp.team.slots) || [];
+    for (var pi = 0; pi < 11; pi++) {
+      html += bpPlayerToken_(meSlots[pi], 'me', pi);
+      html += bpPlayerToken_(oppSlots[pi], 'opp', pi);
+    }
   }
 
   // Мяч
@@ -7151,8 +7160,9 @@ function renderBattleResult(result, xp) {
 
   content.innerHTML = html;
 
-  // === Запуск анимации ===
-  playBattleAnimation_(result, xp);
+  // === Запуск анимации: 3D-хайлайты или 2D-фолбэк ===
+  if (use3d) playBattle3D_(result, xp);
+  else playBattleAnimation_(result, xp);
 }
 
 /* Флаг для пропуска */
@@ -7405,6 +7415,480 @@ function playBattleAnimation_(result, xp) {
     if (xp && xp.leveledUp) {
       setTimeout(function () { showLevelUp(xp.level); }, 900);
     }
+  })();
+}
+
+/* ============================================================
+   ⚔️ БИТВА 3D — хайлайты опасных моментов (Three.js)
+   Ночной стадион, человечки-футболисты с бегом и пасами,
+   камера следит за мячом. Фолбэк — 2D-анимация.
+   ============================================================ */
+var B3D = null;
+
+function battle3dDispose_() {
+  if (!B3D) return;
+  cancelAnimationFrame(B3D.raf);
+  B3D.tweens.forEach(function (tw) { tw.res(); });
+  B3D.tweens.length = 0;
+  try { B3D.renderer.dispose(); } catch (e) {}
+  if (B3D.mount && B3D.mount.parentNode) B3D.mount.parentNode.removeChild(B3D.mount);
+  B3D = null;
+}
+
+/* Газон с разметкой — текстура из canvas */
+function battle3dPitchTexture_() {
+  var cv = document.createElement('canvas');
+  cv.width = 1050; cv.height = 680;
+  var g = cv.getContext('2d');
+  var i;
+  for (i = 0; i < 14; i++) {
+    g.fillStyle = (i % 2) ? '#2f8c42' : '#277a38';
+    g.fillRect(Math.floor(i * cv.width / 14), 0, Math.ceil(cv.width / 14) + 1, cv.height);
+  }
+  var sx = cv.width / 105, sy = cv.height / 68;
+  g.strokeStyle = 'rgba(255,255,255,.9)';
+  g.fillStyle = 'rgba(255,255,255,.9)';
+  g.lineWidth = 3;
+  g.strokeRect(4, 4, cv.width - 8, cv.height - 8);
+  g.beginPath(); g.moveTo(cv.width / 2, 4); g.lineTo(cv.width / 2, cv.height - 4); g.stroke();
+  g.beginPath(); g.arc(cv.width / 2, cv.height / 2, 9.15 * sy, 0, Math.PI * 2); g.stroke();
+  g.beginPath(); g.arc(cv.width / 2, cv.height / 2, 5, 0, Math.PI * 2); g.fill();
+  // штрафные и вратарские площадки
+  [4, cv.width - 4 - 16.5 * sx].forEach(function (x0) {
+    g.strokeRect(x0, (68 - 40.32) / 2 * sy, 16.5 * sx, 40.32 * sy);
+  });
+  [4, cv.width - 4 - 5.5 * sx].forEach(function (x0) {
+    g.strokeRect(x0, (68 - 18.32) / 2 * sy, 5.5 * sx, 18.32 * sy);
+  });
+  return new THREE.CanvasTexture(cv);
+}
+
+/* Имя над игроком — спрайт из canvas */
+function battle3dNameSprite_(text) {
+  var cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 64;
+  var g = cv.getContext('2d');
+  g.font = 'bold 30px Arial, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  var w = Math.min(246, g.measureText(text).width + 28);
+  g.fillStyle = 'rgba(0,0,0,.5)';
+  g.beginPath();
+  g.roundRect ? g.roundRect(128 - w / 2, 10, w, 44, 12) : g.rect(128 - w / 2, 10, w, 44);
+  g.fill();
+  g.fillStyle = '#ffffff';
+  g.fillText(text, 128, 33);
+  var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false
+  }));
+  sp.scale.set(4.4, 1.1, 1);
+  return sp;
+}
+
+/* Футболист-человечек: ноги/руки с суставами, бег цикличный */
+function battle3dPlayer_(kit, skinColor, hairColor, name) {
+  function mat(c) { return new THREE.MeshLambertMaterial({ color: c }); }
+  var shirt = mat(kit.shirt), shorts = mat(kit.shorts), skinM = mat(skinColor), hairM = mat(hairColor);
+  var g = new THREE.Group();
+
+  var torso = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.62, 0.3), shirt);
+  torso.position.y = 1.12; g.add(torso);
+  var pel = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.26, 0.28), shorts);
+  pel.position.y = 0.72; g.add(pel);
+
+  function leg(x) {
+    var p = new THREE.Group(); p.position.set(x, 0.6, 0);
+    var m = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.58, 0.17), skinM); m.position.y = -0.29; p.add(m);
+    var sock = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.22, 0.18), shirt); sock.position.y = -0.47; p.add(sock);
+    var boot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.28), mat(0x1c1c1c)); boot.position.set(0, -0.56, 0.04); p.add(boot);
+    g.add(p); return p;
+  }
+  var legL = leg(-0.13), legR = leg(0.13);
+
+  function arm(x) {
+    var p = new THREE.Group(); p.position.set(x, 1.4, 0);
+    var m = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.5, 0.14), shirt); m.position.y = -0.23; p.add(m);
+    var hand = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.12, 0.13), skinM); hand.position.y = -0.49; p.add(hand);
+    g.add(p); return p;
+  }
+  var armL = arm(-0.34), armR = arm(0.34);
+
+  var head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), skinM);
+  head.position.y = 1.66; g.add(head);
+  var hair = new THREE.Mesh(new THREE.SphereGeometry(0.176, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), hairM);
+  hair.position.y = 1.68; g.add(hair);
+
+  // мягкая тень-пятно (контакт с газоном)
+  var sh = new THREE.Mesh(
+    new THREE.CircleGeometry(0.44, 16),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.3, depthWrite: false })
+  );
+  sh.rotation.x = -Math.PI / 2; sh.position.y = 0.02; g.add(sh);
+
+  if (name) { var sp = battle3dNameSprite_(name); sp.position.y = 2.25; g.add(sp); }
+
+  g.userData = { legL: legL, legR: legR, armL: armL, armR: armR, phase: 0, sprint: 0, lock: 0, holdT: 0 };
+  return g;
+}
+
+function playBattle3D_(result, xp) {
+  if (!window.THREE) { playBattleAnimation_(result, xp); return; }
+  var pitchEl = document.getElementById('battlePitch');
+  if (!pitchEl) { playBattleAnimation_(result, xp); return; }
+  battle3dDispose_();
+
+  var events = result.events || [];
+  var meScore = 0, oppScore = 0;
+  var bsMe = document.getElementById('bsMe');
+  var bsOpp = document.getElementById('bsOpp');
+  var flash = document.getElementById('pitchFlash');
+  var goalText = document.getElementById('pitchGoalText');
+  var timeline = document.getElementById('battleTimeline');
+  BATTLE_SKIP = false;
+
+  var ball2d = document.getElementById('pitchBall');
+  if (ball2d) ball2d.style.display = 'none';
+
+  var mount = document.createElement('div');
+  mount.id = 'battle3dMount';
+  mount.style.cssText = 'position:absolute;inset:0;z-index:1;overflow:hidden;';
+  pitchEl.insertBefore(mount, pitchEl.firstChild);
+
+  var W = pitchEl.clientWidth || 320, H = pitchEl.clientHeight || 200;
+
+  var renderer;
+  try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
+  catch (e) { mount.remove(); playBattleAnimation_(result, xp); return; }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(W, H);
+  mount.appendChild(renderer.domElement);
+
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0f1a);
+  scene.fog = new THREE.Fog(0x0a0f1a, 110, 260);
+
+  var camera = new THREE.PerspectiveCamera(40, W / H, 0.5, 600);
+  camera.position.set(-16, 21, 30);
+
+  // свет: ночной матч под прожекторами
+  scene.add(new THREE.HemisphereLight(0xa8bedd, 0x24382a, 1.15));
+  var fillLight = new THREE.DirectionalLight(0x88aaff, 0.35);
+  fillLight.position.set(40, 50, -30);
+  scene.add(fillLight);
+  var keyLight = new THREE.DirectionalLight(0xfff0d0, 1.6);
+  keyLight.position.set(-35, 70, 25);
+  scene.add(keyLight);
+
+  // газон
+  var pitchMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(105, 68),
+    new THREE.MeshLambertMaterial({ map: battle3dPitchTexture_() })
+  );
+  pitchMesh.rotation.x = -Math.PI / 2;
+  scene.add(pitchMesh);
+
+  // окружение: земля, трибуны, толпа (сеяный PRNG — стабильный вид)
+  var rnd = (function (s) { return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; })(777);
+  var ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshLambertMaterial({ color: 0x0a0d12 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.06; scene.add(ground);
+  var standMat = new THREE.MeshLambertMaterial({ color: 0x151a24 });
+  [[0, -56, 170, 13], [0, 56, 170, 13], [-74, 0, 13, 115], [74, 0, 13, 115]].forEach(function (s) {
+    var b = new THREE.Mesh(new THREE.BoxGeometry(s[2], 11, s[3]), standMat);
+    b.position.set(s[0], 5.5, s[1]); scene.add(b);
+  });
+  (function () {
+    var N = 1800, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+    var palette = [[0.9,0.85,0.7],[0.7,0.75,0.85],[0.85,0.5,0.45],[0.5,0.6,0.9],[0.95,0.95,0.95],[0.55,0.5,0.55]];
+    for (var i = 0; i < N; i++) {
+      var side = i % 4, x, z;
+      if (side === 0) { x = rnd() * 160 - 80; z = -56 + rnd() * 6 - 3; }
+      else if (side === 1) { x = rnd() * 160 - 80; z = 56 + rnd() * 6 - 3; }
+      else if (side === 2) { x = -74 + rnd() * 6 - 3; z = rnd() * 105 - 52; }
+      else { x = 74 + rnd() * 6 - 3; z = rnd() * 105 - 52; }
+      pos[i * 3] = x; pos[i * 3 + 1] = 11.4 + rnd() * 1.8; pos[i * 3 + 2] = z;
+      var c = palette[(rnd() * palette.length) | 0];
+      col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
+    }
+    var geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.55, vertexColors: true })));
+  })();
+
+  // ворота
+  function makeGoal_(sign) {
+    var grp = new THREE.Group();
+    var postMat = new THREE.MeshLambertMaterial({ color: 0xf2f2f2 });
+    [-3.66, 3.66].forEach(function (z) {
+      var p = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.44, 8), postMat);
+      p.position.set(0, 1.22, z); grp.add(p);
+    });
+    var bar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 7.5, 8), postMat);
+    bar.rotation.x = Math.PI / 2; bar.position.set(0, 2.44, 0); grp.add(bar);
+    var net = new THREE.Mesh(new THREE.BoxGeometry(1.7, 2.3, 7.3),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }));
+    net.position.set(-sign * 0.85, 1.1, 0); grp.add(net);
+    grp.position.set(sign * 52.5, 0, 0);
+    return grp;
+  }
+  scene.add(makeGoal_(1)); scene.add(makeGoal_(-1));
+
+  // === Команды ===
+  var FORM = [[3,0],[14,-24],[12,-8],[12,8],[14,24],[32,-12],[36,0],[32,12],[52,-20],[58,0],[52,20]];
+  var SKINS = [0xf2c89b, 0xe0ac7e, 0xc98d5f, 0x9c6b43, 0x6b4226];
+  var HAIRS = [0x2b2b2b, 0x4a3120, 0x7a4a20, 0x141414, 0x666666];
+  var KITS = { me: { shirt: 0xf4f4f4, shorts: 0xf4f4f4 }, opp: { shirt: 0x9c1c28, shorts: 0x232323 } };
+
+  var squads = { me: [], opp: [] };
+  ['me', 'opp'].forEach(function (side) {
+    var team = side === 'me' ? result.me.team : result.opponent.team;
+    var slots = (team && team.slots) || [];
+    for (var i = 0; i < 11; i++) {
+      var card = slots[i] && slots[i].card;
+      var nm = card ? ((card.name || '').trim().split(/\s+/).slice(-1)[0] || card.name) : ('Игрок ' + (i + 1));
+      var p = battle3dPlayer_(KITS[side], SKINS[(i * 3 + (side === 'opp' ? 2 : 0)) % SKINS.length], HAIRS[(i * 2 + 1) % HAIRS.length], nm);
+      var bx = side === 'me' ? FORM[i][0] : 105 - FORM[i][0];
+      var bz = FORM[i][1];
+      p.position.set(bx, 0, bz);
+      p.rotation.y = side === 'me' ? Math.PI / 2 : -Math.PI / 2;
+      p.userData.base = { x: bx, z: bz };
+      p.userData.driftX = bx; p.userData.driftZ = bz;
+      p.userData.holdT = 0.3 + (i % 5) * 0.2;
+      p.userData.side = side; p.userData.idx = i;
+      p.userData.phase = (i * 1.618 + (side === 'opp' ? 0.7 : 0)) * 2;
+      scene.add(p);
+      squads[side].push(p);
+    }
+  });
+
+  // мяч
+  var ball3d = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 12), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x2a2a2a }));
+  ball3d.position.set(0, 0.34, 0);
+  scene.add(ball3d);
+
+  // === Твины и главный цикл ===
+  var TWEENS = [];
+  function tween(dur, fn) {
+    return new Promise(function (res) { TWEENS.push({ t: 0, dur: dur, fn: fn, res: res }); });
+  }
+  function delay_(ms) { return tween(ms, function () {}); }
+  function smooth(k) { return k * k * (3 - 2 * k); }
+
+  function movePlayer(p, x, z, dur) {
+    var sx = p.position.x, sz = p.position.z;
+    p.userData.sprint = 1;
+    p.rotation.y = Math.atan2(x - sx, z - sz);
+    return tween(dur, function (k) {
+      p.position.x = sx + (x - sx) * k;
+      p.position.z = sz + (z - sz) * k;
+    }).then(function () { p.userData.sprint = 0; });
+  }
+  function moveBallTo(x, z, dur, arc) {
+    var sx = ball3d.position.x, sz = ball3d.position.z;
+    return tween(dur, function (k) {
+      ball3d.position.x = sx + (x - sx) * k;
+      ball3d.position.z = sz + (z - sz) * k;
+      ball3d.position.y = 0.34 + (arc ? Math.sin(k * Math.PI) * arc : 0);
+    });
+  }
+  function setBallOpacity(o) {
+    ball3d.material.transparent = true;
+    ball3d.material.opacity = o;
+  }
+
+  var camFocus = null;
+  var last = performance.now();
+  function loop(now) {
+    if (!B3D) return;
+    if (!mount.isConnected) { battle3dDispose_(); return; }
+    B3D.raf = requestAnimationFrame(loop);
+    var dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
+
+    for (var i = TWEENS.length - 1; i >= 0; i--) {
+      var tw = TWEENS[i];
+      tw.t += dt * 1000;
+      var k = Math.min(1, tw.t / tw.dur);
+      tw.fn(BATTLE_SKIP ? 1 : smooth(k));
+      if (k >= 1 || BATTLE_SKIP) { TWEENS.splice(i, 1); tw.res(); }
+    }
+
+    var all = squads.me.concat(squads.opp);
+    for (var j = 0; j < all.length; j++) {
+      var p = all[j], ud = p.userData;
+      var speed = ud.sprint ? 11.5 : 6;
+      ud.phase += dt * speed;
+      var amp = ud.sprint ? 0.78 : 0.42;
+      var s = Math.sin(ud.phase) * amp;
+      ud.legL.rotation.x = s;
+      ud.legR.rotation.x = -s;
+      ud.armL.rotation.x = -s * 0.75;
+      ud.armR.rotation.x = s * 0.75;
+      p.position.y = Math.abs(Math.cos(ud.phase)) * (ud.sprint ? 0.09 : 0.045);
+      // свободные игроки живут: слегка перемещаются вокруг позиции
+      if (!ud.sprint && !ud.lock) {
+        ud.holdT -= dt;
+        if (ud.holdT <= 0) {
+          ud.holdT = 1.1 + ((ud.idx * 37 + (ud.side === 'opp' ? 11 : 0)) % 10) / 8;
+          var r1 = Math.abs(Math.sin(ud.phase * 0.7 + ud.idx * 12.9898));
+          var r2 = Math.abs(Math.sin(ud.phase * 0.9 + ud.idx * 78.233));
+          ud.driftX = ud.base.x + (r1 - 0.5) * 6;
+          ud.driftZ = ud.base.z + (r2 - 0.5) * 8;
+        }
+        p.position.x += (ud.driftX - p.position.x) * Math.min(1, dt * 2.2);
+        p.position.z += (ud.driftZ - p.position.z) * Math.min(1, dt * 2.2);
+      }
+    }
+
+    ball3d.rotation.z -= dt * (ball3d.position.x !== 0 ? 7 : 2);
+
+    // камера ТВ: сверху-сбоку, плавно за мячом
+    var focusX = camFocus ? camFocus.x : ball3d.position.x;
+    var focusZ = camFocus ? camFocus.z : ball3d.position.z;
+    var desX = focusX - 13, desY = 21, desZ = 30;
+    camera.position.x += (desX - camera.position.x) * Math.min(1, dt * 3.2);
+    camera.position.y += (desY - camera.position.y) * Math.min(1, dt * 3.2);
+    camera.position.z += (desZ - camera.position.z) * Math.min(1, dt * 3.2);
+    camera.lookAt(focusX + 4, 0.8, focusZ * 0.5);
+
+    renderer.render(scene, camera);
+  }
+
+  B3D = { raf: requestAnimationFrame(loop), renderer: renderer, mount: mount, tweens: TWEENS, scene: scene, camera: camera, squads: squads, ball: ball3d };
+
+  // === DOM-хелперы (табло/таймлайн общие с 2D) ===
+  function updateScore(side) {
+    if (side === 'me') {
+      meScore++;
+      if (bsMe) { bsMe.textContent = meScore; bsMe.classList.add('pop'); setTimeout(function () { bsMe.classList.remove('pop'); }, 400); }
+    } else {
+      oppScore++;
+      if (bsOpp) { bsOpp.textContent = oppScore; bsOpp.classList.add('pop'); setTimeout(function () { bsOpp.classList.remove('pop'); }, 400); }
+    }
+  }
+  function showGoalText(text, isGoal) {
+    if (!goalText) return;
+    goalText.textContent = text;
+    goalText.className = 'pitch-goal-text' + (isGoal ? '' : ' miss');
+    void goalText.offsetWidth;
+    goalText.classList.add('show');
+    setTimeout(function () { goalText.classList.remove('show'); }, 950);
+  }
+  function flashScreen(isGoal) {
+    if (!flash) return;
+    flash.className = 'pitch-flash' + (isGoal ? ' goal' : ' miss');
+    setTimeout(function () { flash.className = 'pitch-flash'; }, 650);
+  }
+  function updateTimeline(text, isGoal) {
+    if (!timeline) return;
+    timeline.className = 'battle-timeline' + (isGoal === true ? ' goal' : (isGoal === false ? ' miss' : ''));
+    timeline.innerHTML = text;
+  }
+
+  /* Атака-хайлайт: пасовая комбинация и удар */
+  async function playAttack3d_(ev) {
+    var attSide = ev.attacker === 'me' ? 'me' : 'opp';
+    var defSide = attSide === 'me' ? 'opp' : 'me';
+    var dir = attSide === 'me' ? 1 : -1;
+
+    var chain = squads[attSide].slice().sort(function (a, b) {
+      return dir > 0 ? b.userData.base.x - a.userData.base.x : a.userData.base.x - b.userData.base.x;
+    }).slice(0, 3);
+    var defs = squads[defSide].slice().sort(function (a, b) {
+      return Math.abs(a.userData.base.z) - Math.abs(b.userData.base.z);
+    }).slice(0, 3);
+    chain.forEach(function (p) { p.userData.lock = 1; });
+    defs.forEach(function (p) { p.userData.lock = 1; });
+
+    // пасовая цепочка: от глубины к воротам
+    for (var c = 0; c < chain.length; c++) {
+      var carrier = chain[c];
+      var tx = Math.min(99, Math.max(5, carrier.userData.base.x + dir * (4 + c * 2)));
+      var tz = Math.max(-30, Math.min(30, carrier.userData.base.z + (c - 1) * 5));
+      var runP = movePlayer(carrier, tx, tz, 0.72);
+      await delay_(140);
+      var passP = moveBallTo(tx, tz, 0.58, 1.3);
+      defs.forEach(function (d, di) {
+        movePlayer(d,
+          Math.min(100, Math.max(4, tx - dir * (2 + di * 1.5))),
+          Math.max(-30, Math.min(30, tz - 7 + di * 7)), 0.95);
+      });
+      await runP; await passP;
+      if (BATTLE_SKIP) break;
+    }
+
+    // удар
+    var shooter = chain[chain.length - 1];
+    shooter.userData.sprint = 1;
+    var goalX = dir > 0 ? 103.6 : 1.4;
+    var shotZ = ((ev.minute * 13) % 7) - 3; // -3..3 — в створ
+    if (!ev.isGoal && !ev.hitPost) shotZ = ((ev.minute % 2) ? 15 : -15); // мимо — по флангу
+    await delay_(160);
+    var shotP = moveBallTo(goalX, shotZ, 0.55, 2.1);
+    await delay_(240);
+
+    if (ev.isGoal) {
+      flashScreen(true);
+      showGoalText('ГОЛ!', true);
+      updateScore(ev.attacker);
+      updateTimeline('<span class="tl-minute">' + ev.minute + '\'</span> ⚽ ГОЛ! Забивает ' + (attSide === 'me' ? 'твоя команда' : 'соперник'), true);
+      camFocus = { x: dir > 0 ? 95 : 10, z: 0 };
+      haptic('medium');
+      await shotP;
+      setBallOpacity(0.35);
+      await delay_(900);
+      camFocus = null;
+    } else {
+      await shotP;
+      flashScreen(false);
+      showGoalText(ev.hitPost ? 'ШТАНГА!' : 'МИМО!', false);
+      updateTimeline('<span class="tl-minute">' + ev.minute + '\'</span> ' + (ev.hitPost ? '🔩 Штанга! Не повезло' : '💨 Мимо ворот'), false);
+      haptic('light');
+      await delay_(800);
+    }
+    setBallOpacity(1);
+
+    // все возвращаются на позиции
+    chain.concat(defs).forEach(function (p) { p.userData.lock = 0; p.userData.sprint = 0; });
+    var back = [];
+    squads.me.concat(squads.opp).forEach(function (p) {
+      back.push(movePlayer(p, p.userData.base.x, p.userData.base.z, 0.85));
+    });
+    back.push(moveBallTo(0, 0, 0.85, 0));
+    await Promise.all(back);
+  }
+
+  // === Прогон хайлайтов ===
+  (async function () {
+    updateTimeline('<span class="tl-minute">0\'</span> Матч начался!');
+    haptic('light');
+    await delay_(900);
+
+    for (var i = 0; i < events.length; i++) {
+      if (BATTLE_SKIP || !B3D) break;
+      var ev = events[i];
+      updateTimeline('<span class="tl-minute">' + ev.minute + '\'</span> Атака ' + (ev.attacker === 'me' ? 'твоей команды' : 'соперника') + '...');
+      haptic('light');
+      await playAttack3d_(ev);
+      if (BATTLE_SKIP || !B3D) break;
+      await delay_(500);
+    }
+
+    if (!B3D) return; // модалку закрыли — выходим
+
+    if (BATTLE_SKIP) {
+      meScore = result.score ? result.score.me : 0;
+      oppScore = result.score ? result.score.opp : 0;
+      if (bsMe) bsMe.textContent = meScore;
+      if (bsOpp) bsOpp.textContent = oppScore;
+      updateTimeline('<span class="tl-minute">90\'</span> Матч завершён!');
+    } else {
+      updateTimeline('<span class="tl-minute">90\'</span> Финальный свисток!');
+      await delay_(700);
+    }
+
+    battle3dDispose_();
+    showBattleFinal_(result, xp);
+    if (result.outcome === 'win') setTimeout(function () { showConfetti_(); }, 200);
+    if (xp && xp.leveledUp) setTimeout(function () { showLevelUp(xp.level); }, 900);
   })();
 }
 
