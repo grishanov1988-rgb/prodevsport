@@ -1293,7 +1293,37 @@ body.light .ach-badge { background: rgba(29,26,18,.04); }
   font-size: var(--fs-meta); color: var(--hint);
   text-transform: uppercase; letter-spacing: var(--ls-meta); margin-top: 4px;
 }
-.pf-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 15px; }
+/* Игровой блок: Коллекция / Моя команда / Битва */
+.pf-game-block {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  margin-bottom: 12px;
+}
+.pf-game-card {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 14px 6px 12px;
+  border-radius: 14px; border: 1px solid rgba(230,196,108,.35);
+  background: linear-gradient(165deg, rgba(230,196,108,.10), rgba(0,0,0,.22));
+  color: var(--text); cursor: pointer; transition: .16s;
+  position: relative; overflow: hidden;
+}
+.pf-game-card::before {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, rgba(46,125,60,.09) 0 14px, transparent 14px 28px);
+  pointer-events: none;
+}
+.pf-game-card:active { transform: scale(.96); border-color: rgba(230,196,108,.6); box-shadow: var(--gold-glow); }
+.pf-game-ico {
+  font-size: 30px; line-height: 1;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,.4));
+  animation: sbox-float 3.2s ease-in-out infinite;
+  position: relative; z-index: 1;
+}
+.pf-game-card:nth-child(2) .pf-game-ico { animation-delay: .5s; }
+.pf-game-card:nth-child(3) .pf-game-ico { animation-delay: 1s; }
+.pf-game-name { font-size: 11.5px; font-weight: var(--fw-black); position: relative; z-index: 1; }
+.pf-game-sub { font-size: 8.5px; color: var(--hint); position: relative; z-index: 1; }
+
+.pf-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 15px; }
 .pf-action {
   display: flex; align-items: center; gap: 10px;
   padding: 13px 14px;
@@ -2182,6 +2212,35 @@ body.light .sbc-progress { background: rgba(29,26,18,.07); }
 .coll-stat .lbl { font-size: 10px; color: var(--hint); margin-top: 3px; text-transform: uppercase; letter-spacing: .6px; }
 
 .coll-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; }
+/* Карточки коллекции — как в боксах (FC26) */
+.coll-grid-cards { gap: 14px 10px; }
+.coll-card-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.coll-card-cell .card-slot {
+  width: 100%; max-width: 158px; height: auto;
+  aspect-ratio: 108 / 164;
+  opacity: 1; transform: none;
+}
+.coll-card-cell .card-slot .card-flip-inner { transform: rotateY(180deg); }
+.coll-card-cell .card-face { border-radius: 10px; }
+.coll-card-cell .cm-qty {
+  position: static;
+  font-size: 10px; font-weight: var(--fw-black); color: var(--accent);
+  background: var(--accent2); border: 1px solid rgba(230,196,108,.4);
+  border-radius: 10px; padding: 2px 10px;
+}
+/* Чипы редкости в шапке коллекции */
+.rarity-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 15px; }
+.rarity-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid; border-radius: 20px; padding: 3px 10px;
+  background: rgba(255,255,255,.04); font-size: 10px; font-weight: var(--fw-black);
+}
+.rarity-chip .rc-dot { width: 7px; height: 7px; border-radius: 50%; }
+.rarity-chip .rc-label { letter-spacing: .5px; color: var(--hint); }
+.rarity-chip .rc-count { color: #fff; }
+.coll-card-cell .coll-sell-btn { width: 100%; max-width: 158px; }
 .card-mini {
   border: 2px solid;
   border-radius: 13px; padding: 11px 9px;
@@ -2946,6 +3005,8 @@ body.light .xh-item { background: rgba(29,26,18,.03); }
 @media (max-width: 380px) {
   .wheel-stage { width: 210px; height: 210px; }
   .card-slot { width: 96px !important; height: 150px !important; }
+  /* В коллекции карточки крупнее — сетка 2 колонки */
+  .coll-card-cell .card-slot { width: 148px !important; height: 225px !important; }
 }
 
 @media (max-width: 380px) {
@@ -3327,23 +3388,7 @@ function renderShopContent() {
   var bal = document.getElementById('shopBalance');
   if (bal) bal.textContent = 'Баланс: ' + (d.stats.balance || 0).toLocaleString('ru-RU') + ' XP';
 
-  if (SHOP_STATE.viewingCollection) { renderCollectionView(box); return; }
-
   var html = '';
-
-  // ===== Баннер коллекции =====
-  html +=
-    '<div class="shop-banner-compact" onclick="openCollection()">' +
-      '<div class="sbc-left">' +
-        '<div class="sbc-icon">📚</div>' +
-        '<div>' +
-          '<div class="sbc-title">Коллекция</div>' +
-          '<div class="sbc-sub">' + d.stats.uniqueCards + '/' + d.stats.catalogTotal + ' · ' + d.stats.completionPct + '%</div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="sbc-progress"><div class="sbc-progress-fill" style="width:' + d.stats.completionPct + '%"></div></div>' +
-      '<div class="sbc-arrow">›</div>' +
-    '</div>';
 
   // ===== 🎡 Колесо фортуны =====
   html +=
@@ -3536,15 +3581,15 @@ function openDailyCardModal_(card) {
    ============================================================ */
 var WHEEL = {
   prizes: [
-    { kind: 'xp', icon: '✨', label: '25 XP' },
+    { kind: 'xp', icon: '✨', label: '50 XP' },
     { kind: 'box', icon: '🎫', label: 'Фан-бокс' },
-    { kind: 'xp', icon: '✨', label: '75 XP' },
+    { kind: 'xp', icon: '✨', label: '100 XP' },
     { kind: 'box', icon: '🧤', label: 'Профи-бокс' },
-    { kind: 'xp', icon: '✨', label: '150 XP' },
-    { kind: 'joker', icon: '🃏', label: 'Джокер' },
     { kind: 'xp', icon: '✨', label: '200 XP' },
+    { kind: 'joker', icon: '🃏', label: 'Джокер' },
+    { kind: 'xp', icon: '✨', label: '300 XP' },
     { kind: 'box', icon: '🏆', label: 'Золотой' },
-    { kind: 'xp', icon: '⭐', label: '500 XP' }
+    { kind: 'xp', icon: '⭐', label: '750 XP' }
   ],
   rotation: 0,
   spinning: false,
@@ -3922,19 +3967,23 @@ function closeBoxModal() {
 }
 
 function openCollection() {
-  SHOP_STATE.viewingCollection = true;
-  var box = document.getElementById('shopContent');
-  if (box) box.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+  STATE.viewingCollection = true;
+  var app = $('#app');
+  if (app) app.innerHTML = '<div class="content"><div class="loader"><div class="spinner"></div></div></div>';
 
   callServer('miniApp_getCollection', CHAT_ID, USER_NAME)
     .then(function (res) {
+      var app2 = $('#app');
+      if (!app2) return;
       if (!res || !res.ok) {
-        if (box) box.innerHTML = '<div class="empty">Ошибка: ' +
-          escapeHtml((res && res.error) || '') + '</div>';
+        app2.innerHTML = '<div class="content"><div class="coll-head">' +
+          '<button class="coll-back" onclick="backFromCollection()">← Назад</button>' +
+          '<div class="coll-title">Коллекция</div></div>' +
+          '<div class="empty">Ошибка: ' + escapeHtml((res && res.error) || '') + '</div></div>';
         return;
       }
       SHOP_STATE.collection = res;
-      renderCollectionView(box);
+      renderCollectionView(app2);
     });
 }
 
@@ -3981,24 +4030,15 @@ if (hasAny) {
   if (!cards.length) {
     html += '<div class="empty">Пока нет карточек.<br>Откройте первый бокс!</div>';
   } else {
-    html += '<div class="coll-grid">';
-    cards.forEach(function (c) {
-      var r = RARITY[c.rarity] || RARITY.common;
-      var flag = COUNTRY_EMOJI[c.countryCode] || '🌍';
-      var initials = (c.name || '?').split(' ').map(function (x) { return x[0]; }).slice(0, 2).join('');
+    html += '<div class="coll-grid coll-grid-cards">';
+    cards.forEach(function (c, i) {
       html +=
-        '<div class="card-mini" style="border-color:' + r.color + '">' +
-          '<div class="cm-ovr" style="color:' + r.color + '">' + c.ovr + '</div>' +
-          '<div class="cm-avatar" style="background:linear-gradient(135deg,' + r.color + '44,' + r.color + '22)">' +
-            '<span>' + escapeHtml(initials) + '</span>' +
-            '<span class="cm-flag">' + flag + '</span>' +
-          '</div>' +
-          '<div class="cm-name">' + escapeHtml(c.name) + '</div>' +
-          '<div class="cm-meta">' + escapeHtml(c.position) + ' · ' + escapeHtml(c.club || '') + '</div>' +
+        '<div class="coll-card-cell">' +
+          renderCardHtml(c, i) +
           (c.quantity > 1
             ? '<div class="cm-qty">×' + c.quantity + '</div>' +
               '<button class="coll-sell-btn" data-card-id="' + c.cardId + '" data-card-name="' +
-                escapeHtml(c.name) + '">Продать дубль · +' +
+                escapeHtml(c.name) + '">Продать · +' +
                 sellPriceLocal_(c) + ' XP</button>'
             : '') +
         '</div>';
@@ -4039,12 +4079,12 @@ if (hasAny) {
 /* Локальный расчёт цены продажи (зеркало серверного CARD_SELL_MULT) */
 function sellPriceLocal_(c) {
   var mult = { common: 1, rare: 2, epic: 3, legendary: 5, mythic: 8 };
-  return (Number(c.ovr) || 50) * (mult[c.rarity] || 1);
+  return (Number(c.ovr) || 50) * (mult[c.rarity] || 1) * 3;
 }
 
 function backFromCollection() {
-  SHOP_STATE.viewingCollection = false;
-  renderShopContent();
+  STATE.viewingCollection = false;
+  render();
 }
 
 // Обмен с сервером: fetch к деплою Google Apps Script (вместо google.script.run).
@@ -6082,6 +6122,8 @@ function renderTaskCard(t) {
 }
 
 function renderProfile(app) {
+  if (STATE.viewingCollection) { renderCollectionView(app); return; }
+
   var data = STATE.bootstrap || {};
   var p = data.profile || {};
   var ach = p.achievements || [];
@@ -6120,9 +6162,24 @@ function renderProfile(app) {
           '<div class="pf-stat"><div class="pf-stat-num">—</div><div class="pf-stat-lbl">Очков</div></div>' +
           '<div class="pf-stat"><div class="pf-stat-num">—</div><div class="pf-stat-lbl">Прогнозов</div></div>' +
       '</div>' +
+      '<div class="pf-game-block">' +
+        '<button class="pf-game-card" onclick="openCollection()">' +
+          '<span class="pf-game-ico">📚</span>' +
+          '<span class="pf-game-name">Коллекция</span>' +
+          '<span class="pf-game-sub">Карточки игроков</span>' +
+        '</button>' +
+        '<button class="pf-game-card" onclick="openTeamBuilder()">' +
+          '<span class="pf-game-ico">⚽</span>' +
+          '<span class="pf-game-name">Моя команда</span>' +
+          '<span class="pf-game-sub">Состав и рейтинг</span>' +
+        '</button>' +
+        '<button class="pf-game-card" onclick="openTeamBattle()">' +
+          '<span class="pf-game-ico">⚔️</span>' +
+          '<span class="pf-game-name">Битва</span>' +
+          '<span class="pf-game-sub">Сразить составы</span>' +
+        '</button>' +
+      '</div>' +
       '<div class="pf-actions">' +
-        '<button class="pf-action" onclick="openTeamBuilder()"><span class="pf-action-ico">⚽</span><span>Моя команда</span></button>' +
-        '<button class="pf-action" onclick="openTeamBattle()"><span class="pf-action-ico">⚔️</span><span>Битва</span></button>' +
         '<button class="pf-action" onclick="openQuestsModal()"><span class="pf-action-ico">🎯</span><span>Задания</span></button>' +
         '<button class="pf-action" onclick="openNotifyModal()"><span class="pf-action-ico">🔔</span><span>Уведомл.</span></button>' +
         '<button class="pf-action" onclick="scrollToStats()"><span class="pf-action-ico">📊</span><span>Статистика</span></button>' +

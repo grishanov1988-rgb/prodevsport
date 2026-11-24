@@ -14,15 +14,15 @@ const JOKER_PRICE_XP = 500;
 // Колесо фортуны: призы — XP, боксы и джокер (вес = шанс, сумма 100)
 interface WheelPrize { kind: 'xp' | 'box' | 'joker'; icon: string; label: string; value?: number; boxCode?: string; w: number }
 const WHEEL_PRIZES: WheelPrize[] = [
-  { kind: 'xp', icon: '✨', label: '25 XP', value: 25, w: 22 },
+  { kind: 'xp', icon: '✨', label: '50 XP', value: 50, w: 22 },
   { kind: 'box', icon: '🎫', label: 'Фан-бокс', boxCode: 'bronze', w: 14 },
-  { kind: 'xp', icon: '✨', label: '75 XP', value: 75, w: 16 },
+  { kind: 'xp', icon: '✨', label: '100 XP', value: 100, w: 16 },
   { kind: 'box', icon: '🧤', label: 'Профи-бокс', boxCode: 'silver', w: 7 },
-  { kind: 'xp', icon: '✨', label: '150 XP', value: 150, w: 11 },
+  { kind: 'xp', icon: '✨', label: '200 XP', value: 200, w: 11 },
   { kind: 'joker', icon: '🃏', label: 'Джокер', w: 4 },
-  { kind: 'xp', icon: '✨', label: '200 XP', value: 200, w: 5 },
+  { kind: 'xp', icon: '✨', label: '300 XP', value: 300, w: 5 },
   { kind: 'box', icon: '🏆', label: 'Золотой', boxCode: 'gold', w: 2 },
-  { kind: 'xp', icon: '⭐', label: '500 XP', value: 500, w: 1 },
+  { kind: 'xp', icon: '⭐', label: '750 XP', value: 750, w: 1 },
 ];
 const WHEEL_PAID_PRICE = 100;
 const CARD_SELL_MULT: Record<string, number> = { common: 1, rare: 2, epic: 3, legendary: 5, mythic: 8 };
@@ -438,7 +438,7 @@ export async function sellCard(_chatId: unknown, userName: unknown, cardId: unkn
     if (qty < 1) return { ok: false, error: 'Нечего продавать' };
 
     const cat = row.cards_catalog || {};
-    const price = (Number(cat.ovr) || 50) * (CARD_SELL_MULT[cat.rarity] || 1);
+    const price = (Number(cat.ovr) || 50) * (CARD_SELL_MULT[cat.rarity] || 1) * 3; // масштаб новой экономики
     const newQty = qty - 1;
     if (newQty > 0) {
       await db(`user_cards?id=eq.${row.id}`, { method: 'patch', body: { quantity: newQty }, prefer: 'return=minimal' });

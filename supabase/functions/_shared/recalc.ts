@@ -8,30 +8,34 @@ import { enc, calcPointsForPrediction } from './util.ts';
 import { invalidateRating } from './core.ts';
 import { XP_REWARDS, addXP, wasXPAwarded, logXPAward, bumpTasks, checkBothScoredTask, checkStreakAchievements } from './gamification.ts';
 
-// XP за попадания (только один раз на match+reason) — порт шага 3 updateAllRatings
-async function awardHitXP(userName: string, leagueCode: string, matchNorm: string, points: number, realScore: string) {
+// XP за попадания (только один раз на match+reason) — порт шага 3 updateAllRatings.
+// Джокер удваивает и XP: передаём базовые очки (1/3/5) и множитель.
+async function awardHitXP(userName: string, leagueCode: string, matchNorm: string, basePoints: number, realScore: string, jokerMult: number) {
   const gmMatchKey = leagueCode + '||' + matchNorm;
-  if (points === 5) {
+  if (basePoints === 5) {
     if (!(await wasXPAwarded(userName, gmMatchKey, 'exactScore'))) {
-      await addXP(userName, XP_REWARDS.exactScore, 'exactScore');
-      await logXPAward(userName, gmMatchKey, 'exactScore', XP_REWARDS.exactScore);
+      const xp = XP_REWARDS.exactScore * jokerMult;
+      await addXP(userName, xp, 'exactScore');
+      await logXPAward(userName, gmMatchKey, 'exactScore', xp);
       await bumpTasks(userName, 'exactScore');
       await bumpTasks(userName, 'outcomeHit');
       await checkBothScoredTask(userName, realScore);
       await checkStreakAchievements(userName);
     }
-  } else if (points === 3) {
+  } else if (basePoints === 3) {
     if (!(await wasXPAwarded(userName, gmMatchKey, 'diffHit'))) {
-      await addXP(userName, XP_REWARDS.diffHit, 'diffHit');
-      await logXPAward(userName, gmMatchKey, 'diffHit', XP_REWARDS.diffHit);
+      const xp = XP_REWARDS.diffHit * jokerMult;
+      await addXP(userName, xp, 'diffHit');
+      await logXPAward(userName, gmMatchKey, 'diffHit', xp);
       await bumpTasks(userName, 'outcomeHit');
       await checkBothScoredTask(userName, realScore);
       await checkStreakAchievements(userName);
     }
-  } else if (points === 1) {
+  } else if (basePoints === 1) {
     if (!(await wasXPAwarded(userName, gmMatchKey, 'outcomeHit'))) {
-      await addXP(userName, XP_REWARDS.outcomeHit, 'outcomeHit');
-      await logXPAward(userName, gmMatchKey, 'outcomeHit', XP_REWARDS.outcomeHit);
+      const xp = XP_REWARDS.outcomeHit * jokerMult;
+      await addXP(userName, xp, 'outcomeHit');
+      await logXPAward(userName, gmMatchKey, 'outcomeHit', xp);
       await bumpTasks(userName, 'outcomeHit');
       await checkStreakAchievements(userName);
     }
@@ -65,11 +69,12 @@ export async function recalcUserPoints(userName: string): Promise<void> {
     for (const p of preds) {
       const real = realMap[p.league_code + '||' + p.match_norm];
       if (!real) continue;
-      let pts = calcPointsForPrediction(p.outcome, p.score, real).points;
-      if (p.is_joker === true) pts *= 2; // джокер x2
+      const basePts = calcPointsForPrediction(p.outcome, p.score, real).points;
+      const jokerMult = p.is_joker === true ? 2 : 1;
+      const pts = basePts * jokerMult; // джокер x2 к рейтинговым очкам и XP
       total += pts;
       perLeague[p.league_code] = (perLeague[p.league_code] || 0) + pts;
-      await awardHitXP(clean, p.league_code, p.match_norm, pts, real);
+      await awardHitXP(clean, p.league_code, p.match_norm, basePts, real, jokerMult);
     }
     await db('user_points?on_conflict=user_name', {
       method: 'post',

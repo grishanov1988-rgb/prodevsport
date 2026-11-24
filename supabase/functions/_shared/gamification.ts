@@ -9,7 +9,7 @@ import { XP_ACHIEVEMENTS } from './config.ts';
 import { enc, getPeriodKey, formatDateMsk } from './util.ts';
 import { getUserAchievements } from './core.ts';
 
-export const XP_REWARDS = { prediction: 5, firstOfDay: 15, streakBonus: 10, outcomeHit: 10, diffHit: 20, exactScore: 40, bothScored: 5, taskClaim: 0 };
+export const XP_REWARDS = { prediction: 5, firstOfDay: 20, streakBonus: 15, outcomeHit: 40, diffHit: 80, exactScore: 200, bothScored: 5, taskClaim: 0 };
 
 export function xpForLevel(level: number): number { return 50 * Math.pow(level, 2); }
 export function calcLevel(xp: number): number { return Math.floor(Math.sqrt(Math.max(0, xp) / 50)); }
