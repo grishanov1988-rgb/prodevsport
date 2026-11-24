@@ -68,27 +68,37 @@ export async function getLeagueMatches(leagueCode: unknown, _chatId: unknown, us
     });
     const tourNumbers = Object.keys(toursMap).map(Number).sort((a, b) => a - b);
     if (!tourNumbers.length) return { ok: true, matches: [] };
-    // Текущий тур = ПЕРВЫЙ (по возрастанию) активный тур:
-    //  — есть матч, который идёт сейчас или ещё не начался (дата + 4ч в будущем), или
-    //  — есть недавно завершившийся матч без счёта (запас ~30ч на подтягивание парсером).
-    // Перенесённые матчи месячной давности тур не держат: переносимся дальше.
-    // (GAS-версия шла с конца списка и цепляла последний тур с незакрытым счётом —
-    //  с полным календарём это давал 18-й тур АПЛ вместо текущего.)
+    // Текущий тур = тур ближайшего предстоящего/идущего матча.
+    // Дополнительно: если недавно завершившийся матч (≤30ч назад) ещё без счёта —
+    // держим его тур (запас парсеру), пока он не станет старше или не появится счёт.
+    // Перенесённые матчи старше 30ч тур не держат: показывается ближайший будущий тур.
     const now = Date.now();
     const hasValidScore = (s: unknown) => !!s && /^\d+\s*[-:]\s*\d+$/.test(String(s));
     const SCORE_GRACE_MS = 30 * 3600 * 1000;
-    let currentTour: number | null = null;
+    let upcomingTour: number | null = null;
+    let upcomingTime = Infinity;
+    let graceTour: number | null = null;
     for (const tNum of tourNumbers) {
-      const isTourActive = toursMap[tNum].some((m: any) => {
-        if (!m.utc_date) return !hasValidScore(m.real_score);
+      for (const m of toursMap[tNum]) {
+        const scored = hasValidScore(m.real_score);
+        if (!m.utc_date) {
+          if (!scored && graceTour === null) graceTour = tNum;
+          continue;
+        }
         const t = new Date(m.utc_date).getTime();
-        if (isNaN(t)) return !hasValidScore(m.real_score);
-        if (t + 4 * 3600 * 1000 > now) return true;
-        if (!hasValidScore(m.real_score) && t + SCORE_GRACE_MS > now) return true;
-        return false;
-      });
-      if (isTourActive) { currentTour = tNum; break; }
+        if (isNaN(t)) {
+          if (!scored && graceTour === null) graceTour = tNum;
+          continue;
+        }
+        if (t + 4 * 3600 * 1000 > now && t < upcomingTime) { upcomingTime = t; upcomingTour = tNum; }
+        if (!scored && t <= now && t + SCORE_GRACE_MS > now) {
+          if (graceTour === null || tNum < graceTour) graceTour = tNum;
+        }
+      }
     }
+    let currentTour: number | null = null;
+    if (graceTour !== null && (upcomingTour === null || graceTour < upcomingTour)) currentTour = graceTour;
+    else if (upcomingTour !== null) currentTour = upcomingTour;
     if (currentTour === null) currentTour = tourNumbers[tourNumbers.length - 1];
     const matches = toursMap[currentTour] || [];
     const userPreds = await db(`predictions?user_name=eq.${enc(cleanUser)}&league_code=eq.${enc(code)}`) ?? [];
