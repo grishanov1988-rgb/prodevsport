@@ -401,26 +401,26 @@ body.light .team-crest { box-shadow: 0 0 0 1px rgba(0,0,0,.07), 0 2px 6px rgba(0
   letter-spacing: .2px; line-height: 1;
   user-select: none;
 }
+/* Название — эмблема — эмблема — название (эмблемы у дефиса по центру) */
 .match-teams-row {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; gap: 7px;
   flex: 1; min-width: 0;
-  font-size: 14px; font-weight: var(--fw-med);
-  line-height: 1.3;
+  font-size: 13.5px; font-weight: var(--fw-med);
+  line-height: 1.25;
 }
-/* Эмблема клуба + название на одной строке */
 .match-teams-row .team {
-  display: inline-flex; flex-direction: row; align-items: center; gap: 5px;
-  min-width: 0; flex: 1;
-  text-align: left;
+  flex: 1; min-width: 0; display: block;
 }
 .match-teams-row .team-name {
   display: block; min-width: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+.match-teams-row .team-home .team-name { text-align: right; }
+.match-teams-row .team-away .team-name { text-align: left; }
 .match-teams-row .team-crest,
 .match-teams-row .team-crest-fallback {
   margin-right: 0; vertical-align: 0;
-  width: 17px; height: 17px; flex-shrink: 0;
+  width: 20px; height: 20px; flex-shrink: 0;
 }
 .match-teams-row .vs { color: var(--hint); font-weight: var(--fw-reg); flex-shrink: 0; }
 .pred-teams {
@@ -434,13 +434,14 @@ body.light .team-crest { box-shadow: 0 0 0 1px rgba(0,0,0,.07), 0 2px 6px rgba(0
    КАРТОЧКА МАТЧА
    ============================================================================ */
 .match-card {
-  border-radius: var(--r-md);
-  padding: 7px 10px;
-  margin-bottom: 6px;
+  border-radius: 14px;
+  padding: 9px 11px;
+  margin-bottom: 7px;
   border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.14));
   transition: border-color .18s, background .18s, box-shadow .18s;
-  display: flex; align-items: center; gap: 8px;
-  min-height: 40px;
+  display: flex; align-items: center; gap: 10px;
+  min-height: 44px;
 }
 .match-card.expanded {
   border-color: rgba(230,196,108,.6);
@@ -448,35 +449,39 @@ body.light .team-crest { box-shadow: 0 0 0 1px rgba(0,0,0,.07), 0 2px 6px rgba(0
   box-shadow: var(--gold-glow);
 }
 .match-card.done { background: rgba(230,196,108,.05); border-color: rgba(230,196,108,.25); }
-.match-head { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.match-head { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 0; }
 .match-time {
-  font-size: 10px; font-weight: var(--fw-bold);
+  align-self: flex-start;
+  font-size: 9.5px; font-weight: var(--fw-bold);
   color: var(--hint); letter-spacing: .4px;
-  text-transform: uppercase; white-space: nowrap; line-height: 1;
+  line-height: 1.2; white-space: nowrap;
+  background: rgba(0,0,0,.28); border: 1px solid var(--line);
+  border-radius: 7px; padding: 3px 7px;
+  text-transform: uppercase;
 }
-.match-card.expanded .match-time { color: var(--accent); }
+.match-card.expanded .match-time { color: var(--accent); border-color: rgba(230,196,108,.45); }
 .match-teams-row { font-size: 13px; font-weight: var(--fw-med); line-height: 1.25; }
 
 /* П1 / X / П2 */
-.odds-row { display: flex; gap: 4px; flex-shrink: 0; }
+.odds-row { display: flex; gap: 6px; flex-shrink: 0; }
 .odds-btn {
-  min-width: 38px; height: 32px; padding: 0 6px;
+  min-width: 0; height: 36px; padding: 0 8px;
   background: rgba(0,0,0,.28);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 11px; font-weight: var(--fw-bold);
   color: var(--text); cursor: pointer;
   transition: .14s; text-align: center; line-height: 1;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
 }
 body.light .odds-btn { background: rgba(29,26,18,.04); }
-.odds-btn .odds-label { display: block; font-size: 11px; font-weight: var(--fw-black); line-height: 1; }
+.odds-btn .odds-label { display: block; font-size: 12px; font-weight: var(--fw-black); line-height: 1; }
 .odds-btn .odds-sub {
-  display: block; font-size: 7.5px; font-weight: var(--fw-med); color: var(--hint);
-  margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  max-width: 42px; text-transform: uppercase; letter-spacing: .3px;
+  display: block; font-size: 8px; font-weight: var(--fw-med); color: var(--hint);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 64px; text-transform: uppercase; letter-spacing: .3px; line-height: 1;
 }
-.odds-btn:active { transform: scale(.93); }
+.odds-btn:active { transform: scale(.95); }
 .odds-btn.selected {
   background: var(--gold-grad);
   color: var(--on-accent);
@@ -485,14 +490,35 @@ body.light .odds-btn { background: rgba(29,26,18,.04); }
 }
 .odds-btn.selected .odds-sub { color: rgba(26,20,5,.7); }
 
+/* Чип «мой прогноз» в списке матчей */
+.my-pick {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(230,196,108,.1);
+  border: 1px solid rgba(230,196,108,.45);
+  border-radius: 10px;
+  padding: 6px 10px;
+  flex-shrink: 0;
+}
+.my-pick .mp-outcome { font-size: 12px; font-weight: var(--fw-black); color: var(--accent); }
+.my-pick .mp-score {
+  font-size: 12px; font-weight: var(--fw-black); color: var(--text);
+  font-family: var(--font-display);
+}
+.my-pick .mp-check {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--gold-grad); color: var(--on-accent);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: var(--fw-black);
+}
+
 /* Инлайн-ввод счёта */
-.score-inline { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.score-inline { display: flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0; }
 .score-inline input {
-  width: 26px; height: 30px; padding: 0;
+  width: 46px; height: 38px; padding: 0;
   border: 1px solid var(--line);
   background: rgba(0,0,0,.28);
   color: var(--text);
-  border-radius: 8px; font-size: 14px; font-weight: var(--fw-black);
+  border-radius: 10px; font-size: 16px; font-weight: var(--fw-black);
   text-align: center;
   -moz-appearance: textfield;
   font-family: var(--font-display);
@@ -504,15 +530,15 @@ body.light .score-inline input { background: rgba(29,26,18,.04); }
   outline: none; border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent2);
 }
-.score-inline .score-colon { font-weight: var(--fw-black); color: var(--hint); font-size: 13px; line-height: 1; }
+.score-inline .score-colon { font-weight: var(--fw-black); color: var(--hint); font-size: 15px; line-height: 1; }
 .score-inline .score-save {
-  width: 30px; height: 30px; padding: 0;
+  width: 46px; height: 38px; padding: 0; margin-left: 4px;
   background: var(--gold-grad); color: var(--on-accent);
-  border: none; border-radius: 8px; font-size: 14px; font-weight: var(--fw-black);
+  border: none; border-radius: 10px; font-size: 16px; font-weight: var(--fw-black);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   box-shadow: var(--gold-glow);
 }
-.score-inline .score-save:active { transform: scale(.9); }
+.score-inline .score-save:active { transform: scale(.92); }
 
 .pred-done-mini {
   width: 34px; height: 34px; border-radius: 50%;
@@ -2567,37 +2593,27 @@ body.light .battle-timeline { background: rgba(29,26,18,.04); }
    ============================================================================ */
 
 /* --- Компактный список матчей (адаптив) --- */
-.match-card { padding: 6px 9px; min-height: 38px; gap: 8px; margin-bottom: 5px; }
 .match-side { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-.match-time { font-size: 9px; }
-.match-teams-row { font-size: 11.5px; gap: 8px; }
-.odds-btn { min-width: 38px; height: 33px; padding: 0 5px; border-radius: 8px; }
-.odds-btn .odds-label { font-size: 11px; }
-.odds-btn .odds-sub { max-width: 40px; font-size: 7.5px; }
-.score-inline input { height: 30px; width: 26px; font-size: 14px; }
-.score-inline .score-save { width: 30px; height: 30px; font-size: 14px; }
 .pred-done-mini { width: 30px; height: 30px; font-size: 12px; }
 
 /* --- Телефон: карточка матча в две строки --- */
 @media (max-width: 620px) {
-  .match-card { flex-direction: column; align-items: stretch; gap: 7px; padding: 8px 10px; }
-  .match-head { flex-direction: row; align-items: center; gap: 8px; flex: none; min-width: 0; width: 100%; }
+  .match-card { flex-direction: column; align-items: stretch; gap: 8px; padding: 9px 10px; }
+  .match-head { flex-direction: row; align-items: center; gap: 9px; flex: none; min-width: 0; width: 100%; }
   .match-time {
-    font-size: 9.5px; line-height: 1.15;
-    background: rgba(0,0,0,.28); border: 1px solid var(--line);
-    border-radius: 7px; padding: 4px 6px; text-align: center;
-    min-width: 54px; flex-shrink: 0;
+    font-size: 9px; text-align: center;
+    min-width: 52px; flex-shrink: 0; align-self: center;
+    padding: 4px 6px;
   }
-  .match-teams-row { flex: 1; min-width: 0; font-size: 12px; }
+  .match-teams-row { flex: 1; min-width: 0; font-size: 13px; }
   .match-teams-row .team { overflow: hidden; }
-  .match-teams-row .team-crest, .match-teams-row .team-crest-fallback { width: 19px; height: 19px; }
   .match-side { width: 100%; min-width: 0; flex-wrap: wrap; }
   .match-side .odds-row { flex: 1; min-width: 0; }
-  .match-side .odds-row .odds-btn { flex: 1; min-width: 0; height: 36px; }
+  .match-side .odds-row .odds-btn { flex: 1; min-width: 0; height: 40px; }
   .odds-btn .odds-sub { max-width: none; }
-  .match-side .score-inline { width: 100%; justify-content: flex-end; }
+  .match-side .score-inline { width: 100%; }
+  .match-side .my-pick { margin-left: auto; }
   .match-side .match-locked { margin-left: auto; }
-  .match-side .pred-done-mini { margin-left: auto; }
 }
 
 /* --- Чип ближайшего матча (таймер) --- */
@@ -2973,9 +2989,11 @@ function matchTeamsHtml(match) {
 
   return '' +
     '<div class="match-teams-row">' +
-      '<span class="team">' + teamCrestHtml(h) + '<span class="team-name">' + escapeHtml(hName) + '</span></span>' +
+      '<span class="team team-home"><span class="team-name">' + escapeHtml(hName) + '</span></span>' +
+      teamCrestHtml(h) +
       '<span class="vs">—</span>' +
-      '<span class="team">' + '<span class="team-name">' + escapeHtml(aName) + '</span>' + teamCrestHtml(a) + '</span>' +
+      teamCrestHtml(a) +
+      '<span class="team team-away"><span class="team-name">' + escapeHtml(aName) + '</span></span>' +
     '</div>';
 }
 
@@ -5182,11 +5200,11 @@ function renderMatchesList(leagueCode) {
     // Правая часть
     html += '<div class="match-side">';
     if (already) {
-      html += '<div class="odds-btn selected" style="pointer-events:none;cursor:default">' +
-        '<span class="odds-label">' + escapeHtml(m.userPrediction.outcome) + '</span>' +
-        '<span class="odds-sub">' + escapeHtml(m.userPrediction.score) + '</span>' +
+      html += '<div class="my-pick">' +
+        '<span class="mp-outcome">' + escapeHtml(m.userPrediction.outcome) + '</span>' +
+        '<span class="mp-score">' + escapeHtml(m.userPrediction.score) + '</span>' +
+        '<span class="mp-check">✓</span>' +
       '</div>';
-      html += '<div class="pred-done-mini">✓</div>';
     } else if (isStarted) {
       html += '<div class="match-locked">начался</div>';
     } else {
