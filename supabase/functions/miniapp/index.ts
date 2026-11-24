@@ -64,6 +64,10 @@ const HANDLERS: Record<string, (...args: any[]) => Promise<unknown> | unknown> =
   miniApp_sellCard: shop.sellCard,
   miniApp_getXPHistory: shop.getXPHistory,
 
+  // --- Реклама AdsGram (этап 7) ---
+  miniApp_getAdStatus: shop.getAdStatus,
+  miniApp_adReward: shop.adReward,
+
   // --- Team Builder + битвы (этап 6) ---
   miniApp_getTeamBuilder: team.getTeamBuilder,
   miniApp_saveTeam: team.saveTeam,

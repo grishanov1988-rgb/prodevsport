@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <script src="config.js"></script>
 <style>
 /* ============================================================================
@@ -3394,13 +3395,26 @@ var COUNTRY_EMOJI = {
   'SK':'🇸🇰','CO':'🇨🇴','GE':'🇬🇪','UA':'🇺🇦','EE':'🇪🇪'
 };
 
-var SHOP_STATE = { 
-  data: null, 
-  opening: false, 
-  collection: null, 
+var SHOP_STATE = {
+  data: null,
+  opening: false,
+  collection: null,
   viewingCollection: false,
-  jokerStatus: null 
+  jokerStatus: null
 };
+
+/* ==================== 📢 РЕКЛАМА ADSGRAM ====================
+   ВАЖНО: вставьте свой Block ID из кабинета https://partner.adsgram.ai
+   (Платформа → Ad blocks → «<> Show code» → Copy BlockID) вместо 'XXXX'. */
+var ADSGRAM_BLOCK_ID = 'XXXX';
+var ADSGRAM_CTRL = null;
+function adsgramCtrl_() {
+  if (ADSGRAM_CTRL) return ADSGRAM_CTRL;
+  if (!window.Adsgram || !ADSGRAM_BLOCK_ID || ADSGRAM_BLOCK_ID === 'XXXX') return null;
+  try { ADSGRAM_CTRL = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID }); }
+  catch (e) { return null; }
+  return ADSGRAM_CTRL;
+}
 
 function renderShop(app) {
   app.innerHTML =
@@ -3462,13 +3476,13 @@ function renderShopContent() {
       '</div>' +
     '</div>';
 
-  // ===== 📢 Блок рекламы (место для монетизации) =====
+  // ===== 📢 Реклама AdsGram: rewarded-видео за XP =====
   html +=
     '<div class="ad-slot">' +
       '<span class="ad-tag">Реклама</span>' +
       '<div class="ad-body">' +
-        '<div class="ad-title">Смотреть видео · +1 вращение</div>' +
-        '<div class="ad-sub">Скоро: бонус за просмотр рекламы</div>' +
+        '<div class="ad-title">📺 Смотреть видео · +50 XP</div>' +
+        '<div class="ad-sub" id="adLeft">Загрузка...</div>' +
       '</div>' +
       '<button class="ad-btn" id="adWatchBtn">Смотреть</button>' +
     '</div>';
@@ -3575,15 +3589,79 @@ function renderShopContent() {
     });
   }
 
-  // 🎡 Колесо фортуны + 📢 реклама
+  // 🎡 Колесо фортуны + 📢 реклама AdsGram
   initWheel_();
+  bindAdWatch_();
+}
+
+/* 📢 Статус рекламы (лимит на день) + показ rewarded-видео AdsGram */
+function bindAdWatch_() {
   var adBtn = document.getElementById('adWatchBtn');
-  if (adBtn) {
-    adBtn.addEventListener('click', function () {
-      showToast('📢 Рекламный блок: интеграция появится здесь');
-      haptic('light');
+  if (!adBtn) return;
+
+  // Статус: сколько просмотров осталось сегодня
+  callServer('miniApp_getAdStatus', CHAT_ID, USER_NAME).then(function (st) {
+    if (!st || !st.ok) {
+      var el0 = document.getElementById('adLeft');
+      if (el0) el0.textContent = 'Бонус за просмотр · до ' + 10 + ' раз в день';
+      return;
+    }
+    var el = document.getElementById('adLeft');
+    if (el) el.textContent = 'Осталось сегодня: ' + st.remainingToday + ' из ' + st.dailyLimit;
+    if (st.remainingToday <= 0) {
+      adBtn.disabled = true;
+      adBtn.textContent = 'Лимит';
+    }
+  });
+
+  adBtn.addEventListener('click', function () {
+    haptic('light');
+    var ctrl = adsgramCtrl_();
+    if (!ctrl) {
+      showToast('📢 Реклама скоро появится', 'error');
+      return;
+    }
+    adBtn.disabled = true;
+    adBtn.textContent = '...';
+    var settled = false;
+    var finish = function () {
+      adBtn.disabled = false;
+      adBtn.textContent = 'Смотреть';
+    };
+    ctrl.show().then(function (res) {
+      if (settled) return;
+      settled = true;
+      if (res && res.done) {
+        // Просмотр до конца — награду выдаёт только сервер (анти-чит)
+        callServer('miniApp_adReward', CHAT_ID, USER_NAME).then(function (r) {
+          finish();
+          if (r && r.ok) {
+            showToast('✨ +' + r.xp + ' XP за просмотр рекламы!', 'success');
+            haptic('medium');
+            if (SHOP_STATE.data && SHOP_STATE.data.stats) SHOP_STATE.data.stats.balance = r.newBalance;
+            var bal = document.getElementById('shopBalance');
+            if (bal && r.newBalance != null) bal.textContent = 'Баланс: ' + r.newBalance.toLocaleString('ru-RU') + ' XP';
+            var leftEl = document.getElementById('adLeft');
+            if (leftEl) leftEl.textContent = 'Осталось сегодня: ' + r.remainingToday + ' из ' + (r.watchedToday + r.remainingToday);
+            if (r.remainingToday <= 0) {
+              adBtn.disabled = true;
+              adBtn.textContent = 'Лимит';
+            }
+          } else {
+            showToast((r && r.error) || 'Ошибка начисления XP', 'error');
+          }
+        });
+      } else {
+        finish();
+        showToast('Реклама не досмотрена до конца', 'error');
+      }
+    }).catch(function () {
+      if (settled) return;
+      settled = true;
+      finish();
+      showToast('Реклама недоступна. Попробуйте позже', 'error');
     });
-  }
+  });
 }
 
 /* 🎁 Ежедневный бокс — общий обработчик (бывший дубль удалён) */

@@ -465,3 +465,58 @@ export async function getXPHistory(_chatId: unknown, userName: unknown) {
     return { ok: true, items };
   } catch (e: any) { return { ok: false, error: e.message }; }
 }
+
+// ------------------------------------------------------------
+//  Реклама AdsGram (этап 7) — награда за rewarded-просмотр.
+//  Награда выдаётся ТОЛЬКО сервером, после onReward на клиенте.
+//  Лимит: AD_DAILY_LIMIT просмотров в день; идемпотентность —
+//  одна запись в xp_logs на просмотр (match_key = ad_<дата>_<n>).
+// ------------------------------------------------------------
+const AD_REWARD_XP = 50;
+const AD_DAILY_LIMIT = 10;
+
+function adDayPrefix(): string {
+  return 'ad_' + getPeriodKey('daily');
+}
+
+export async function getAdStatus(_chatId: unknown, userName: unknown) {
+  try {
+    const clean = String(userName || '').trim();
+    if (!clean) return { ok: false, error: 'Не указан пользователь' };
+    const rows = await db(`xp_logs?user_name=eq.${enc(clean)}&reason=eq.ad_reward&match_key=like.${enc(adDayPrefix())}*`) ?? [];
+    const watchedToday = rows.length;
+    return {
+      ok: true,
+      rewardXP: AD_REWARD_XP,
+      dailyLimit: AD_DAILY_LIMIT,
+      watchedToday,
+      remainingToday: Math.max(0, AD_DAILY_LIMIT - watchedToday),
+    };
+  } catch (e: any) { return { ok: false, error: e.message }; }
+}
+
+export async function adReward(_chatId: unknown, userName: unknown) {
+  try {
+    const clean = String(userName || '').trim();
+    if (!clean) return { ok: false, error: 'Не указан пользователь' };
+    if (!(await checkRateLimit('ad_' + clean, 8))) return { ok: false, error: 'Слишком часто. Подождите минуту.' };
+
+    const prefix = adDayPrefix();
+    const rows = await db(`xp_logs?user_name=eq.${enc(clean)}&reason=eq.ad_reward&match_key=like.${enc(prefix)}*&select=match_key`) ?? [];
+    if (rows.length >= AD_DAILY_LIMIT) {
+      return { ok: false, error: 'На сегодня лимит просмотров исчерпан. Загляните завтра!' };
+    }
+
+    const xpRes = await addXP(clean, AD_REWARD_XP, 'adReward');
+    await logXPAward(clean, prefix + '_' + (rows.length + 1), 'ad_reward', AD_REWARD_XP);
+
+    return {
+      ok: true,
+      xp: AD_REWARD_XP,
+      newBalance: xpRes ? xpRes.balance : null,
+      levelUp: xpRes ? !!xpRes.leveledUp : false,
+      watchedToday: rows.length + 1,
+      remainingToday: Math.max(0, AD_DAILY_LIMIT - rows.length - 1),
+    };
+  } catch (e: any) { return { ok: false, error: e.message }; }
+}
