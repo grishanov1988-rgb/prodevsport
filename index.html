@@ -280,20 +280,32 @@ body.light .rating-row.top3 .rank { color: #b07c46; }
 }
 
 .tour-selectors { display: flex; gap: 8px; padding: 0 14px 14px; }
-.tour-select-wrap { flex: 1; position: relative; }
+.tour-select-wrap { flex: 1; position: relative; min-width: 0; }
 .tour-select-wrap select {
-  width: 100%; padding: 12px 36px 12px 14px;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--r-md); color: var(--text);
-  font-size: 14px; font-weight: var(--fw-med);
+  width: 100%; padding: 11px 40px 11px 13px;
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.16)), var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px; color: var(--text);
+  font-size: 13px; font-weight: var(--fw-med);
   appearance: none; -webkit-appearance: none;
   cursor: pointer; font-family: inherit;
   box-shadow: var(--inset-top);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: border-color .16s, box-shadow .16s;
 }
+.tour-select-wrap select:focus {
+  outline: none;
+  border-color: rgba(230,196,108,.6);
+  box-shadow: 0 0 0 3px var(--accent2);
+}
+.tour-select-wrap select:disabled { opacity: .5; cursor: default; }
 .tour-select-wrap::after {
-  content: "▾"; position: absolute; right: 14px; top: 50%;
-  transform: translateY(-50%); color: var(--accent);
-  pointer-events: none; font-size: 12px;
+  content: "▾"; position: absolute; right: 7px; top: 50%;
+  transform: translateY(-50%);
+  width: 24px; height: 24px; border-radius: 7px;
+  background: rgba(230,196,108,.12); border: 1px solid rgba(230,196,108,.25);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); pointer-events: none; font-size: 11px; line-height: 1;
 }
 .tour-info { padding: 0 14px 14px; display: flex; gap: 8px; }
 .tour-info-box { flex: 1; border-radius: var(--r-md); padding: 12px; text-align: center; }
@@ -905,8 +917,12 @@ body.light .cmp-row .cmp-score { background: rgba(29,26,18,.05); }
   flex: 1;
   background: rgba(0,0,0,.22);
   border: 1px solid var(--line);
-  border-radius: var(--r-sm); padding: 9px 4px; text-align: center;
+  border-top: 2px solid transparent;
+  border-radius: var(--r-sm); padding: 8px 4px; text-align: center;
 }
+.stat-cmp-item.it-p1 { border-top-color: #e6c46c; }
+.stat-cmp-item.it-x  { border-top-color: #8a8f98; }
+.stat-cmp-item.it-p2 { border-top-color: #e5605a; }
 body.light .stat-cmp-item { background: rgba(29,26,18,.03); }
 .stat-cmp-item .stat-cmp-label {
   font-size: var(--fs-meta); color: var(--hint);
@@ -918,15 +934,37 @@ body.light .stat-cmp-item { background: rgba(29,26,18,.03); }
 }
 .stat-cmp-item .stat-cmp-cnt { font-size: var(--fs-meta); color: var(--hint); }
 .stat-cmp-bar {
-  display: flex; height: 8px; border-radius: 6px;
+  display: flex; gap: 2px; height: 9px; border-radius: 7px;
   overflow: hidden; background: rgba(0,0,0,.3);
   border: 1px solid var(--line-soft);
 }
-.stat-cmp-bar .bar-seg { height: 100%; }
-.stat-cmp-bar .bar-p1   { background: linear-gradient(90deg, #e6c46c, #c69a34); }
-.stat-cmp-bar .bar-draw { background: linear-gradient(90deg, #d9a94e, #b0822c); }
-.stat-cmp-bar .bar-p2   { background: linear-gradient(90deg, #e5605a, #c2443f); }
+.stat-cmp-bar .bar-seg { height: 100%; border-radius: 4px; min-width: 4px; }
+.stat-cmp-bar .bar-p1   { background: linear-gradient(90deg, #efd28a, #c69a34); }
+.stat-cmp-bar .bar-draw { background: linear-gradient(90deg, #9aa1ab, #6c737d); }
+.stat-cmp-bar .bar-p2   { background: linear-gradient(90deg, #ef7b74, #c2443f); }
 .cmp-empty { text-align: center; padding: 22px; color: var(--hint); font-size: var(--fs-label); }
+
+/* --- Строки прогнозов в модалке «Сравнить» --- */
+.cmp-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--accent2); border: 1px solid rgba(230,196,108,.4);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: var(--fw-black); font-size: 13px; color: var(--accent);
+  flex-shrink: 0; text-transform: uppercase;
+}
+.cmp-info { flex: 1; min-width: 0; }
+.cmp-me-tag {
+  font-size: 9px; font-weight: var(--fw-black); color: var(--on-accent);
+  background: var(--gold-grad); border-radius: 6px; padding: 1px 5px;
+  text-transform: uppercase; letter-spacing: .4px; vertical-align: 1px;
+}
+.cmp-chip {
+  font-size: 10px; font-weight: var(--fw-black);
+  padding: 3px 8px; border-radius: 8px; flex-shrink: 0; line-height: 1.2;
+}
+.cmp-chip.chip-p1 { background: rgba(230,196,108,.15); color: var(--accent); border: 1px solid rgba(230,196,108,.4); }
+.cmp-chip.chip-x  { background: rgba(255,255,255,.06); color: var(--hint); border: 1px solid var(--line); }
+.cmp-chip.chip-p2 { background: rgba(229,96,90,.13); color: #e5605a; border: 1px solid rgba(229,96,90,.35); }
 
 .compare-btn {
   margin-top: 12px; width: 100%;
@@ -2541,22 +2579,22 @@ body.light .battle-timeline { background: rgba(29,26,18,.04); }
 .pred-done-mini { width: 30px; height: 30px; font-size: 12px; }
 
 /* --- Телефон: карточка матча в две строки --- */
-@media (max-width: 480px) {
+@media (max-width: 620px) {
   .match-card { flex-direction: column; align-items: stretch; gap: 7px; padding: 8px 10px; }
-  .match-head { flex-direction: row; align-items: center; gap: 8px; flex: none; }
+  .match-head { flex-direction: row; align-items: center; gap: 8px; flex: none; min-width: 0; width: 100%; }
   .match-time {
     font-size: 9.5px; line-height: 1.15;
     background: rgba(0,0,0,.28); border: 1px solid var(--line);
     border-radius: 7px; padding: 4px 6px; text-align: center;
-    min-width: 52px;
+    min-width: 54px; flex-shrink: 0;
   }
-  .match-teams-row { flex: 1; min-width: 0; font-size: 12.5px; }
+  .match-teams-row { flex: 1; min-width: 0; font-size: 12px; }
+  .match-teams-row .team { overflow: hidden; }
   .match-teams-row .team-crest, .match-teams-row .team-crest-fallback { width: 19px; height: 19px; }
-  .match-side { width: 100%; }
-  .match-side .odds-row { flex: 1; }
+  .match-side { width: 100%; min-width: 0; flex-wrap: wrap; }
+  .match-side .odds-row { flex: 1; min-width: 0; }
   .match-side .odds-row .odds-btn { flex: 1; min-width: 0; height: 36px; }
   .odds-btn .odds-sub { max-width: none; }
-  .match-side > .odds-btn { flex: 1; }
   .match-side .score-inline { width: 100%; justify-content: flex-end; }
   .match-side .match-locked { margin-left: auto; }
   .match-side .pred-done-mini { margin-left: auto; }
@@ -5356,7 +5394,7 @@ function renderMyPredictions(app) {
             verdictHtml +
           '</div>' +
           '<div class="pred-card-actions">' +
-            (isPlayed
+            (isPlayed && p.hasVideo
               ? '<button class="pca-btn" ' +
                   'onclick="openHighlights(\'' + escapeHtml(p.matchName).replace(/'/g, "\\'") + '\', \'' +
                   escapeHtml(p.realScore) + '\', \'' + escapeHtml(p.leagueCode || '') + '\')">▶ Видеообзор</button>'
@@ -5427,21 +5465,21 @@ function openCompareModal(matchName, leagueCode) {
         } else {
           statsEl.innerHTML =
             '<div class="stat-cmp">' +
-              '<div class="stat-cmp-title">Как распределились прогнозы (' +
+              '<div class="stat-cmp-title">Как распределились прогнозы · ' +
                 s.total + ' ' + (s.total === 1 ? 'игрок' : (s.total < 5 ? 'игрока' : 'игроков')) +
-              ')</div>' +
+              '</div>' +
               '<div class="stat-cmp-row">' +
-                '<div class="stat-cmp-item">' +
+                '<div class="stat-cmp-item it-p1">' +
                   '<div class="stat-cmp-label">П1</div>' +
                   '<div class="stat-cmp-val">' + s.pctP1 + '%</div>' +
                   '<div class="stat-cmp-cnt">' + s.P1 + '</div>' +
                 '</div>' +
-                '<div class="stat-cmp-item">' +
+                '<div class="stat-cmp-item it-x">' +
                   '<div class="stat-cmp-label">Ничья</div>' +
                   '<div class="stat-cmp-val">' + s.pctDraw + '%</div>' +
                   '<div class="stat-cmp-cnt">' + s.Draw + '</div>' +
                 '</div>' +
-                '<div class="stat-cmp-item">' +
+                '<div class="stat-cmp-item it-p2">' +
                   '<div class="stat-cmp-label">П2</div>' +
                   '<div class="stat-cmp-val">' + s.pctP2 + '%</div>' +
                   '<div class="stat-cmp-cnt">' + s.P2 + '</div>' +
@@ -5463,13 +5501,16 @@ function openCompareModal(matchName, leagueCode) {
       var html = '';
       preds.forEach(function(p) {
         var isMe = (p.userName === USER_NAME);
+        var chipCls = p.outcome === 'П1' ? 'chip-p1' : (p.outcome === 'П2' ? 'chip-p2' : 'chip-x');
+        var initial = escapeHtml(String(p.userName || '?').trim().charAt(0).toUpperCase());
         html += '<div class="cmp-row' + (isMe ? ' me' : '') + '">' +
-          '<div style="flex:1">' +
+          '<div class="cmp-avatar">' + initial + '</div>' +
+          '<div class="cmp-info">' +
             '<div class="cmp-name">' + escapeHtml(p.userName) +
-              (isMe ? ' <span style="font-size:11px;color:var(--accent)">(вы)</span>' : '') +
+              (isMe ? ' <span class="cmp-me-tag">вы</span>' : '') +
             '</div>' +
-            '<div class="cmp-outcome">' + escapeHtml(p.outcome) + '</div>' +
           '</div>' +
+          '<span class="cmp-chip ' + chipCls + '">' + escapeHtml(p.outcome) + '</span>' +
           '<div class="cmp-score">' + escapeHtml(p.score) + '</div>' +
         '</div>';
       });

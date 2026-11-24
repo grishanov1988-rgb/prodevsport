@@ -8,6 +8,7 @@ import { db, upsert } from '../_shared/db.ts';
 import { LEAGUES, XP_ACHIEVEMENTS, PREDICTION_LOCK_BEFORE_MS, RATE_LIMIT_PRED_PER_MIN } from '../_shared/config.ts';
 import { enc, formatDateMsk, calcPointsForPrediction, normalizeMatchName } from '../_shared/util.ts';
 import { buildRating, getTeamsMap, resolveTeams, getUserAchievements, checkRateLimit } from '../_shared/core.ts';
+import { findScorebatVideos } from '../_shared/scorebat.ts';
 import { getXPProfile, addXP, bumpTasks, bumpTaskLeagues, checkStreakAchievements, activateJoker, rollbackJoker } from '../_shared/gamification.ts';
 
 function uiLeagues() {
@@ -234,6 +235,19 @@ export async function getUserPredictions(_chatId: unknown, userName: unknown) {
         outcome: p.outcome, score: p.score, realScore, points,
       });
     }
+
+    // Помечаем сыгранные матчи, по которым есть видеообзор (ScoreBat) —
+    // кнопка «Видеообзор» показывается только при hasVideo
+    const playedItems = list.filter((x: any) => x.realScore).slice(0, 10);
+    if (playedItems.length) {
+      await Promise.all(playedItems.map(async (it: any) => {
+        try {
+          const vids = await findScorebatVideos(it.matchName);
+          it.hasVideo = vids.length > 0;
+        } catch { it.hasVideo = false; }
+      }));
+    }
+
     return { ok: true, predictions: list };
   } catch (e: any) { return { ok: false, error: e.message, predictions: [] }; }
 }
