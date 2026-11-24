@@ -2581,6 +2581,41 @@ body.light .joker-toggle-btn { background: rgba(29,26,18,.03); }
   background: var(--accent); box-shadow: 0 0 8px var(--accent);
 }
 .pitch-team-dot.opp { background: var(--lose); box-shadow: 0 0 8px var(--lose); }
+
+/* === Битва v2: живые футболисты на поле === */
+.bp-player {
+  position: absolute; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center;
+  z-index: 3; transition: left .55s ease, top .55s ease;
+  pointer-events: none;
+}
+.bp-player .bpp-ava {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8.5px; font-weight: var(--fw-black); color: #fff;
+  background: linear-gradient(160deg, #2a2f38, #14171d);
+  border: 2px solid #888;
+  box-shadow: 0 1px 4px rgba(0,0,0,.6);
+  transition: box-shadow .25s, transform .25s;
+}
+.bp-player.opp .bpp-ava { background: linear-gradient(160deg, #3a2426, #1d1214); }
+.bp-player .bpp-name {
+  font-size: 7.5px; font-weight: var(--fw-bold); color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,.9); margin-top: 1px;
+  max-width: 46px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bp-player.has-ball .bpp-ava {
+  transform: scale(1.18);
+  box-shadow: 0 0 0 2px #fff, 0 0 12px rgba(255,255,255,.85);
+}
+.bp-player.shooting .bpp-ava {
+  transform: scale(1.22);
+  box-shadow: 0 0 0 2px var(--accent), 0 0 14px var(--accent);
+}
+@media (max-width: 380px) {
+  .bp-player .bpp-ava { width: 21px; height: 21px; font-size: 7.5px; }
+  .bp-player .bpp-name { font-size: 6.5px; max-width: 38px; }
+}
 .battle-timeline {
   background: rgba(0,0,0,.22);
   border: 1px solid var(--line);
@@ -7021,6 +7056,26 @@ function startBattle() {
   });
 }
 
+/* Координаты базовых позиций 4-3-3 (left, top в %), моя команда — влево→атака вправо */
+var BATTLE_POS = [[8,50],[22,14],[19,36],[19,64],[22,86],[40,26],[44,50],[40,74],[62,16],[70,50],[62,84]];
+
+function bpPlayerToken_(slot, side, idx) {
+  var pos = BATTLE_POS[idx] || [50, 50];
+  var l = side === 'me' ? pos[0] : 100 - pos[0];
+  var t = pos[1];
+  var card = slot && slot.card;
+  var initials = '?', name = (slot && slot.label) || '', ring = '#8a8f98';
+  if (card) {
+    initials = (card.name || '?').trim().split(/\s+/).map(function (s) { return s[0]; }).slice(0, 2).join('');
+    name = (card.name || '').trim().split(/\s+/).slice(-1)[0] || card.name;
+    if (RARITY[card.rarity]) ring = RARITY[card.rarity].color;
+  }
+  return '<div class="bp-player ' + side + '" data-side="' + side + '" data-idx="' + idx + '" style="left:' + l + '%;top:' + t + '%">' +
+    '<span class="bpp-ava" style="border-color:' + ring + '">' + escapeHtml(initials) + '</span>' +
+    '<span class="bpp-name">' + escapeHtml(name) + '</span>' +
+  '</div>';
+}
+
 function renderBattleResult(result, xp) {
   var content = document.getElementById('battleContent');
   if (!content) return;
@@ -7049,13 +7104,13 @@ function renderBattleResult(result, xp) {
   html += '<div class="pitch-box left"></div>';
   html += '<div class="pitch-box right"></div>';
 
-  // Иконки игроков
-  html += '<div class="pitch-team-icons me">' +
-    '<div class="pitch-team-dot"></div>'.repeat(3) +
-  '</div>';
-  html += '<div class="pitch-team-icons opp">' +
-    '<div class="pitch-team-dot opp"></div>'.repeat(3) +
-  '</div>';
+  // ⚽ Живые футболисты 11v11 (схема 4-3-3, твоя команда атакует вправо)
+  var meSlots = (me.team && me.team.slots) || [];
+  var oppSlots = (opp.team && opp.team.slots) || [];
+  for (var pi = 0; pi < 11; pi++) {
+    html += bpPlayerToken_(meSlots[pi], 'me', pi);
+    html += bpPlayerToken_(oppSlots[pi], 'opp', pi);
+  }
 
   // Мяч
   html += '<div class="pitch-ball" id="pitchBall">⚽</div>';
@@ -7119,9 +7174,40 @@ function playBattleAnimation_(result, xp) {
 
   BATTLE_SKIP = false;
 
+  var pitch = document.getElementById('battlePitch');
+  var players = { me: [], opp: [] };
+  if (pitch) {
+    $$('.bp-player', pitch).forEach(function (el) {
+      players[el.dataset.side].push(el);
+    });
+  }
+
   function delay(ms) {
     return new Promise(function (resolve) { setTimeout(resolve, ms); });
   }
+
+  function basePos(side, idx) {
+    var p = BATTLE_POS[idx] || [50, 50];
+    return side === 'me' ? { l: p[0], t: p[1] } : { l: 100 - p[0], t: p[1] };
+  }
+  function setPos(el, l, t) {
+    el.style.left = l + '%';
+    el.style.top = t + '%';
+  }
+
+  // === Жизнь поля: футболисты постоянно перемещаются вокруг своих позиций ===
+  var jogTimer = setInterval(function () {
+    if (BATTLE_SKIP) return;
+    ['me', 'opp'].forEach(function (side) {
+      players[side].forEach(function (el, idx) {
+        if (el.dataset.lock === '1') return;
+        var b = basePos(side, idx);
+        setPos(el,
+          Math.min(95, Math.max(4, b.l + (Math.random() - 0.5) * 5)),
+          Math.min(92, Math.max(7, b.t + (Math.random() - 0.5) * 8)));
+      });
+    });
+  }, 1000);
 
   function updateScore(side) {
     if (side === 'me') {
@@ -7141,18 +7227,31 @@ function playBattleAnimation_(result, xp) {
     }
   }
 
-  function moveBall(targetLeft, targetTop) {
-    if (!ball) return;
-    ball.style.left = targetLeft + '%';
-    ball.style.top = targetTop + '%';
-    ball.classList.add('kick');
-    setTimeout(function () { ball.classList.remove('kick'); }, 400);
+  function moveBallToEl(el) {
+    if (!ball || !el) return;
+    ball.style.left = el.style.left;
+    ball.style.top = el.style.top;
   }
-
+  function moveBallTo(l, t) {
+    if (!ball) return;
+    ball.style.left = l + '%';
+    ball.style.top = t + '%';
+  }
   function resetBall() {
     if (!ball) return;
+    ball.style.opacity = '1';
     ball.style.left = '50%';
     ball.style.top = '50%';
+  }
+  function resetPlayers() {
+    ['me', 'opp'].forEach(function (side) {
+      players[side].forEach(function (el, idx) {
+        el.dataset.lock = '';
+        el.classList.remove('has-ball', 'shooting');
+        var b = basePos(side, idx);
+        setPos(el, b.l, b.t);
+      });
+    });
   }
 
   function showGoalText(text, isGoal) {
@@ -7177,9 +7276,86 @@ function playBattleAnimation_(result, xp) {
     timeline.innerHTML = text;
   }
 
+  /* Одна атака: пасовая цепочка MID → вингер → нападающий → удар */
+  async function playAttack_(ev) {
+    var isMine = ev.attacker === 'me';
+    var attSide = isMine ? 'me' : 'opp';
+    var defSide = isMine ? 'opp' : 'me';
+    var dir = isMine ? 1 : -1; // направление продвижения к чужим воротам
+
+    // Цепочка: трое самых дальних от своих ворот атакующих, идём от середины
+    var chain = players[attSide].map(function (el, idx) {
+      return { el: el, idx: idx, l: basePos(attSide, idx).l, t: basePos(attSide, idx).t };
+    }).sort(function (a, b) { return dir > 0 ? a.l - b.l : b.l - a.l; })
+      .slice(0, 3);
+
+    // Защитники, которые встречают атаку
+    var defs = players[defSide].map(function (el, idx) {
+      return { el: el, idx: idx, t: basePos(defSide, idx).t };
+    }).sort(function (a, b) {
+      return Math.abs(a.t - 50) - Math.abs(b.t - 50);
+    }).slice(0, 3);
+
+    // 1. Розыгрыш: пасовая цепочка
+    for (var c = 0; c < chain.length; c++) {
+      var carrier = chain[c];
+      carrier.el.dataset.lock = '1';
+      carrier.el.classList.add('has-ball');
+      if (c === chain.length - 1) carrier.el.classList.add('shooting');
+      // игрок с мячом продвигается вперёд
+      var adv = 3 + Math.random() * 4;
+      setPos(carrier.el,
+        Math.min(95, Math.max(4, carrier.l + dir * adv)),
+        Math.min(90, Math.max(8, carrier.t + (Math.random() - 0.5) * 8)));
+      await delay(120);
+      moveBallToEl(carrier.el);
+
+      // защитники сдвигаются к мячу
+      defs.forEach(function (d, di) {
+        d.el.dataset.lock = '1';
+        setPos(d.el,
+          Math.min(95, Math.max(4, carrier.l + dir * (2 + di))),
+          Math.min(90, Math.max(8, carrier.t - 8 + di * 8)));
+      });
+
+      await delay(c === chain.length - 1 ? 620 : 520);
+      carrier.el.classList.remove('has-ball');
+      if (BATTLE_SKIP) break;
+    }
+
+    // 2. Удар: мяч летит в створ / мимо / в штангу
+    var shooter = chain[chain.length - 1];
+    var goalL = isMine ? 96.5 : 3.5;
+    var shotT = 50 + (Math.random() - 0.5) * 14;
+    moveBallTo(goalL, shotT);
+    await delay(480);
+
+    if (ev.isGoal) {
+      flashScreen(true);
+      showGoalText('ГОЛ!', true);
+      updateScore(ev.attacker);
+      updateTimeline(
+        '<span class="tl-minute">' + ev.minute + '\'</span> ⚽ ГОЛ! Забивает ' +
+        (isMine ? 'твоя команда' : 'соперник'), true);
+      haptic('medium');
+      // Мяч в сетке
+      moveBallTo(isMine ? 99 : 1, 50);
+      if (ball) ball.style.opacity = '0.35';
+      await delay(950);
+    } else {
+      flashScreen(false);
+      showGoalText(ev.hitPost ? 'ШТАНГА!' : 'МИМО!', false);
+      updateTimeline(
+        '<span class="tl-minute">' + ev.minute + '\'</span> ' +
+        (ev.hitPost ? '🔩 Штанга! Не повезло' : '💨 Мимо ворот'), false);
+      haptic('light');
+      if (!ev.hitPost) moveBallTo(isMine ? 99 : 1, shotT > 50 ? 12 : 88);
+      await delay(850);
+    }
+  }
+
   // === Основной цикл анимации ===
   (async function () {
-    // Небольшая пауза на старт
     updateTimeline('<span class="tl-minute">0\'</span> Матч начался!');
     haptic('light');
     await delay(800);
@@ -7189,62 +7365,25 @@ function playBattleAnimation_(result, xp) {
 
       var ev = events[i];
       var isMine = ev.attacker === 'me';
-
-      // 1. Сообщение об атаке
-      var attackText = '<span class="tl-minute">' + ev.minute + '\'</span> Атака ' +
-        (isMine ? 'твоей команды' : 'соперника') + '...';
-      updateTimeline(attackText);
+      updateTimeline(
+        '<span class="tl-minute">' + ev.minute + '\'</span> Атака ' +
+        (isMine ? 'твоей команды' : 'соперника') + '...');
       haptic('light');
 
-      // 2. Мяч летит к воротам
-      // Если моя атака — к правым воротам (соперника)
-      // Если атака соперника — к левым (моим)
-      var targetLeft = isMine ? 92 : 8;
-      var targetTop = 45 + (Math.random() - 0.5) * 20; // ±10%
-      moveBall(targetLeft, targetTop);
-
-      await delay(450);
+      await playAttack_(ev);
       if (BATTLE_SKIP) break;
 
-      // 3. Результат
-      if (ev.isGoal) {
-        flashScreen(true);
-        showGoalText('ГОЛ!', true);
-        updateScore(ev.attacker);
-        updateTimeline(
-          '<span class="tl-minute">' + ev.minute + '\'</span> ' +
-          '⚽ ГОЛ! Забивает ' + (isMine ? 'твоя команда' : 'соперник'),
-          true
-        );
-        haptic('medium');
-        await delay(900);
-
-        // Мяч "в воротах" — оставляем там на пару секунд
-        if (ball) ball.style.opacity = '0.3';
-        await delay(300);
-      } else {
-        flashScreen(false);
-        showGoalText(ev.hitPost ? 'ШТАНГА!' : 'МИМО!', false);
-        updateTimeline(
-          '<span class="tl-minute">' + ev.minute + '\'</span> ' +
-          (ev.hitPost ? '🔩 Штанга! Не повезло' : '💨 Мимо ворот'),
-          false
-        );
-        haptic('light');
-        await delay(800);
-      }
-
-      if (BATTLE_SKIP) break;
-
-      // 4. Возврат мяча в центр
-      if (ball) ball.style.opacity = '1';
+      // Возврат мяча в центр, игроки — на позиции
       resetBall();
-      await delay(500);
+      resetPlayers();
+      await delay(550);
     }
+
+    clearInterval(jogTimer);
 
     // === Пропуск или завершение ===
     if (BATTLE_SKIP) {
-      // Мгновенно показываем финальный счёт
+      resetPlayers();
       meScore = result.score ? result.score.me : 0;
       oppScore = result.score ? result.score.opp : 0;
       if (bsMe) bsMe.textContent = meScore;
