@@ -6,41 +6,11 @@
 import { db } from './db.ts';
 import { enc, calcPointsForPrediction } from './util.ts';
 import { invalidateRating } from './core.ts';
-import { XP_REWARDS, addXP, wasXPAwarded, logXPAward, bumpTasks, checkBothScoredTask, checkStreakAchievements } from './gamification.ts';
+import { XP_REWARDS, addXP, logXPAward, bumpTasks, checkBothScoredTask, checkStreakAchievements } from './gamification.ts';
 
-// XP за попадания (только один раз на match+reason) — порт шага 3 updateAllRatings.
-// Джокер удваивает и XP: передаём базовые очки (1/3/5) и множитель.
-async function awardHitXP(userName: string, leagueCode: string, matchNorm: string, basePoints: number, realScore: string, jokerMult: number) {
-  const gmMatchKey = leagueCode + '||' + matchNorm;
-  if (basePoints === 5) {
-    if (!(await wasXPAwarded(userName, gmMatchKey, 'exactScore'))) {
-      const xp = XP_REWARDS.exactScore * jokerMult;
-      await addXP(userName, xp, 'exactScore');
-      await logXPAward(userName, gmMatchKey, 'exactScore', xp);
-      await bumpTasks(userName, 'exactScore');
-      await bumpTasks(userName, 'outcomeHit');
-      await checkBothScoredTask(userName, realScore);
-      await checkStreakAchievements(userName);
-    }
-  } else if (basePoints === 3) {
-    if (!(await wasXPAwarded(userName, gmMatchKey, 'diffHit'))) {
-      const xp = XP_REWARDS.diffHit * jokerMult;
-      await addXP(userName, xp, 'diffHit');
-      await logXPAward(userName, gmMatchKey, 'diffHit', xp);
-      await bumpTasks(userName, 'outcomeHit');
-      await checkBothScoredTask(userName, realScore);
-      await checkStreakAchievements(userName);
-    }
-  } else if (basePoints === 1) {
-    if (!(await wasXPAwarded(userName, gmMatchKey, 'outcomeHit'))) {
-      const xp = XP_REWARDS.outcomeHit * jokerMult;
-      await addXP(userName, xp, 'outcomeHit');
-      await logXPAward(userName, gmMatchKey, 'outcomeHit', xp);
-      await bumpTasks(userName, 'outcomeHit');
-      await checkStreakAchievements(userName);
-    }
-  }
-}
+// XP за попадания выдаётся внутри recalcUserPoints (с предзапросом выданных
+// бонусов — один запрос на пользователя вместо проверки каждого прогноза).
+// Джокер удваивает ТОЛЬКО XP; рейтинговые очки 5/3/1 не трогаем.
 
 export async function recalcUserPoints(userName: string): Promise<void> {
   const clean = String(userName || '').trim();
@@ -64,6 +34,13 @@ export async function recalcUserPoints(userName: string): Promise<void> {
     const realMap: Record<string, string> = {};
     matches.forEach((m: any) => { realMap[m.league_code + '||' + m.match_norm] = m.real_score; });
 
+    // Один предзапрос выданных XP-бонусов — вместо wasXPAwarded() на каждый прогноз
+    const awarded = new Set<string>();
+    try {
+      const logs = await db(`xp_logs?user_name=eq.${enc(clean)}&reason=in.(exactScore,diffHit,outcomeHit)&select=match_key,reason&limit=5000`) ?? [];
+      logs.forEach((l: any) => { awarded.add(String(l.match_key) + '|' + String(l.reason)); });
+    } catch { /* ignore */ }
+
     let total = 0;
     const perLeague: Record<string, number> = {};
     for (const p of preds) {
@@ -75,7 +52,33 @@ export async function recalcUserPoints(userName: string): Promise<void> {
       const pts = basePts;
       total += pts;
       perLeague[p.league_code] = (perLeague[p.league_code] || 0) + pts;
-      await awardHitXP(clean, p.league_code, p.match_norm, basePts, real, jokerMult);
+
+      const gmMatchKey = p.league_code + '||' + p.match_norm;
+      const reason = basePts === 5 ? 'exactScore' : basePts === 3 ? 'diffHit' : basePts === 1 ? 'outcomeHit' : null;
+      if (!reason || awarded.has(gmMatchKey + '|' + reason)) continue; // уже выдано — пропускаем
+
+      if (basePts === 5) {
+        const xp = XP_REWARDS.exactScore * jokerMult;
+        await addXP(clean, xp, 'exactScore');
+        await logXPAward(clean, gmMatchKey, 'exactScore', xp);
+        await bumpTasks(clean, 'exactScore');
+        await bumpTasks(clean, 'outcomeHit');
+        await checkBothScoredTask(clean, real);
+        await checkStreakAchievements(clean);
+      } else if (basePts === 3) {
+        const xp = XP_REWARDS.diffHit * jokerMult;
+        await addXP(clean, xp, 'diffHit');
+        await logXPAward(clean, gmMatchKey, 'diffHit', xp);
+        await bumpTasks(clean, 'outcomeHit');
+        await checkBothScoredTask(clean, real);
+        await checkStreakAchievements(clean);
+      } else if (basePts === 1) {
+        const xp = XP_REWARDS.outcomeHit * jokerMult;
+        await addXP(clean, xp, 'outcomeHit');
+        await logXPAward(clean, gmMatchKey, 'outcomeHit', xp);
+        await bumpTasks(clean, 'outcomeHit');
+        await checkStreakAchievements(clean);
+      }
     }
     await db('user_points?on_conflict=user_name', {
       method: 'post',
