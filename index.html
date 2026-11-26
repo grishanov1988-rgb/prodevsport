@@ -713,20 +713,11 @@ body.light .pred-verdict { background: rgba(29,26,18,.04); }
 .pc-pts.mid  { background: rgba(230,196,108,.14); color: var(--accent); }
 .pc-pts.lose { background: rgba(229,96,90,.12); color: var(--lose); }
 .pc-pts.pending, .pc-pick.pending { color: var(--hint); }
-.pc-btns { display: flex; gap: 4px; flex-shrink: 0; }
-.pca-ico {
-  width: 22px; height: 22px; border-radius: 6px; cursor: pointer;
-  font-size: 9px; padding: 0;
-  border: 1px solid rgba(230,196,108,.45);
-  background: transparent; color: var(--accent);
-  display: flex; align-items: center; justify-content: center;
-  transition: .16s;
+.pc-actions { display: flex; gap: 5px; margin-top: 5px; justify-content: flex-end; }
+.pc-actions .pca-btn {
+  padding: 2px 9px; font-size: 8.5px; line-height: 1.7;
+  border-radius: 6px; white-space: nowrap;
 }
-.pca-ico.gold {
-  background: var(--gold-grad); color: var(--on-accent);
-  border-color: transparent; box-shadow: var(--gold-glow);
-}
-.pca-ico:active { transform: scale(.93); }
 
 /* --- Видеообзоры (ScoreBat) --- */
 .video-wrap {
@@ -5893,16 +5884,16 @@ function renderMyPredictions(app) {
                 (isPlayed ? '+' + pts : 'ожид.') +
               '</div>' +
             '</div>' +
-            '<div class="pc-btns">' +
-              (isPlayed && p.hasVideo
-                ? '<button class="pca-ico" title="Видеообзор" ' +
-                    'onclick="openHighlights(\'' + escapeHtml(p.matchName).replace(/'/g, "\\'") + '\', \'' +
-                    escapeHtml(p.realScore) + '\', \'' + escapeHtml(p.leagueCode || '') + '\')">▶</button>'
-                : '') +
-              '<button class="pca-ico gold compare-btn" title="Сравнить прогнозы" ' +
-                'data-match="' + escapeHtml(p.matchName) + '" ' +
-                'data-league="' + escapeHtml(p.leagueCode || '') + '">⇄</button>' +
-            '</div>' +
+          '</div>' +
+          '<div class="pc-actions">' +
+            (isPlayed && p.hasVideo
+              ? '<button class="pca-btn" ' +
+                  'onclick="openHighlights(\'' + escapeHtml(p.matchName).replace(/'/g, "\\'") + '\', \'' +
+                  escapeHtml(p.realScore) + '\', \'' + escapeHtml(p.leagueCode || '') + '\')">▶ Видеообзор</button>'
+              : '') +
+            '<button class="pca-btn primary compare-btn" ' +
+              'data-match="' + escapeHtml(p.matchName) + '" ' +
+              'data-league="' + escapeHtml(p.leagueCode || '') + '">⇄ Сравнить</button>' +
           '</div>' +
         '</div>';
       });
