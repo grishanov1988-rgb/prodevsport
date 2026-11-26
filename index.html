@@ -760,18 +760,11 @@ body.light .pred-verdict { background: rgba(29,26,18,.04); }
 .nav-item .ico {
   display: flex;
   align-items: center; justify-content: center;
-  width: 24px; height: 24px;
-  margin: 0 auto 4px;
+  width: 27px; height: 27px;
+  margin: 0 auto 3px;
   line-height: 0;
 }
 .nav-item .nav-label { display: block; text-align: center; }
-.tab-ico { display: block; width: 24px; height: 24px; background: currentColor;
-  -webkit-mask: center / contain no-repeat; mask: center / contain no-repeat; }
-.tab-ico-rating      { -webkit-mask-image: url("icons/tab-rating.png");      mask-image: url("icons/tab-rating.png"); }
-.tab-ico-matches    { -webkit-mask-image: url("icons/tab-matches.png");     mask-image: url("icons/tab-matches.png"); }
-.tab-ico-predictions{ -webkit-mask-image: url("icons/tab-predictions.png");mask-image: url("icons/tab-predictions.png"); }
-.tab-ico-shop       { -webkit-mask-image: url("icons/tab-shop.png");       mask-image: url("icons/tab-shop.png"); }
-.tab-ico-profile    { -webkit-mask-image: url("icons/tab-profile.png");    mask-image: url("icons/tab-profile.png"); }
 
 .nav-item .ico svg {
   width: 100%; height: 100%; display: block;
@@ -3166,27 +3159,27 @@ body.light .xh-item { background: rgba(29,26,18,.03); }
 <div class="nav" id="nav" style="display:none">
 
   <div class="nav-item" data-tab="rating">
-    <span class="ico"><i class="tab-ico tab-ico-rating"></i></span>
+    <span class="ico"><svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="navgold" x1="9" y1="4" x2="23" y2="18"><stop offset="0" stop-color="#f7dd7e"/><stop offset=".5" stop-color="#d9a93e"/><stop offset="1" stop-color="#8f6b1c"/></linearGradient></defs><path d="M9.5 6.5 C5.8 6.5 4 10 5.6 13 C6.9 15.4 9.3 16.3 11.2 15.6" stroke="url(#navgold)" stroke-width="2.1" fill="none" stroke-linecap="round"/><path d="M22.5 6.5 C26.2 6.5 28 10 26.4 13 C25.1 15.4 22.7 16.3 20.8 15.6" stroke="url(#navgold)" stroke-width="2.1" fill="none" stroke-linecap="round"/><path d="M9.5 4.5 H22.5 V10 C22.5 14.8 20.2 17.6 16 17.6 C11.8 17.6 9.5 14.8 9.5 10 Z" fill="url(#navgold)"/><ellipse cx="13" cy="8.6" rx="1.7" ry="4" fill="#ffffff" opacity=".4" transform="rotate(-14 13 8.6)"/><path d="M13.9 17.6 H18.1 L18.9 21.8 H13.1 Z" fill="url(#navgold)"/><path d="M12 21.8 H20 L21.3 25.4 H10.7 Z" fill="#33302a"/><circle cx="25.3" cy="24.8" r="4.7" fill="#f5f6f8" stroke="#2e3238" stroke-width="1.03"/><path d="M25.3 22.22 l1.97 1.41 -0.75 2.35 h-2.44 l-0.75 -2.35 z" fill="#22252b"/><circle cx="21.91" cy="25.65" r="1.03" fill="#22252b"/><circle cx="28.50" cy="27.24" r="1.03" fill="#22252b"/></svg></span>
     <span class="nav-label">Рейтинг</span>
   </div>
 
   <div class="nav-item" data-tab="matches">
-    <span class="ico"><i class="tab-ico tab-ico-matches"></i></span>
+    <span class="ico"><svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 7 V25 M27 7 V25 M5 7 H27" stroke="#e8ecf2" stroke-width="2.1" stroke-linecap="round"/><path d="M9.5 7 V25 M14 7 V25 M18.5 7 V25 M23 7 V25" stroke="#9aa3b2" stroke-width="0.8" opacity=".5"/><path d="M5 12 H27 M5 17 H27 M5 22 H27" stroke="#9aa3b2" stroke-width="0.8" opacity=".5"/><path d="M5 7 V2.8" stroke="#c9d2de" stroke-width="1.4" stroke-linecap="round"/><path d="M5 2.8 L10 4.1 L5 5.6 Z" fill="#e5703c"/><circle cx="25.2" cy="11" r="4.7" fill="#f5f6f8" stroke="#2e3238" stroke-width="1.03"/><path d="M25.2 8.42 l1.97 1.41 -0.75 2.35 h-2.44 l-0.75 -2.35 z" fill="#22252b"/><circle cx="21.81" cy="11.85" r="1.03" fill="#22252b"/><circle cx="28.40" cy="13.44" r="1.03" fill="#22252b"/></svg></span>
     <span class="nav-label">Матчи</span>
   </div>
 
   <div class="nav-item" data-tab="predictions">
-    <span class="ico"><i class="tab-ico tab-ico-predictions"></i></span>
+    <span class="ico"><svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="24" height="24" rx="3.2" fill="#2f9e5e" stroke="#1c6b3e" stroke-width="1.2"/><line x1="4" y1="16" x2="28" y2="16" stroke="#e8f5ec" stroke-width="1" opacity=".85"/><circle cx="16" cy="16" r="4.2" stroke="#e8f5ec" stroke-width="1" fill="none" opacity=".85"/><rect x="4" y="10" width="4.5" height="12" fill="none" stroke="#e8f5ec" stroke-width="1" opacity=".85"/><rect x="23.5" y="10" width="4.5" height="12" fill="none" stroke="#e8f5ec" stroke-width="1" opacity=".85"/><path d="M9 23 L14.5 14" stroke="#ffd76a" stroke-width="1.9" stroke-linecap="round"/><path d="M14.5 14 l-2.9 0.4 M14.5 14 l0.2 3" stroke="#ffd76a" stroke-width="1.9" stroke-linecap="round"/><circle cx="24.6" cy="24.2" r="3.4" fill="#f5f6f8" stroke="#2e3238" stroke-width="0.75"/><path d="M24.6 22.33 l1.43 1.02 -0.54 1.7 h-1.77 l-0.54 -1.7 z" fill="#22252b"/><circle cx="22.15" cy="24.81" r="0.75" fill="#22252b"/><circle cx="26.91" cy="26.07" r="0.75" fill="#22252b"/></svg></span>
     <span class="nav-label">Прогнозы</span>
   </div>
 
   <div class="nav-item" data-tab="shop">
-    <span class="ico"><i class="tab-ico tab-ico-shop"></i></span>
+    <span class="ico"><svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.5 11 V8.5 A2.5 2.5 0 0 1 7 6 H25 A2.5 2.5 0 0 1 27.5 8.5 V11 Z" fill="#d94f59"/><path d="M4.5 11 a2.75 2.75 0 0 0 5.5 0 a2.75 2.75 0 0 0 5.5 0 a2.75 2.75 0 0 0 5.5 0 a2.75 2.75 0 0 0 5.5 0" fill="#f2f4f7"/><rect x="6.5" y="11" width="19" height="15" rx="1" fill="#333945"/><rect x="10" y="14.5" width="12" height="11.5" rx="1" fill="#59637a"/><line x1="16" y1="14.5" x2="16" y2="26" stroke="#333945" stroke-width="1"/><circle cx="26" cy="4.4" r="2.9" fill="#e0535c"/><path d="M26 7.2 l-1 1.3 h2 z" fill="#e0536c"/><path d="M26 8.5 V11" stroke="#c9d2de" stroke-width="0.9"/><circle cx="25.6" cy="26.2" r="3.1" fill="#f5f6f8" stroke="#2e3238" stroke-width="0.68"/><path d="M25.6 24.50 l1.30 0.93 -0.50 1.55 h-1.61 l-0.50 -1.55 z" fill="#22252b"/><circle cx="23.37" cy="26.76" r="0.68" fill="#22252b"/><circle cx="27.71" cy="27.91" r="0.68" fill="#22252b"/></svg></span>
     <span class="nav-label">Магазин</span>
   </div>
 
   <div class="nav-item" data-tab="profile">
-    <span class="ico"><i class="tab-ico tab-ico-profile"></i></span>
+    <span class="ico"><svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="13.4" r="5.2" fill="#f2c79b"/><path d="M10.4 12.6 a5.6 5.6 0 0 1 11.2 0 z" fill="#33518f"/><rect x="9.4" y="11.9" width="13.2" height="2.2" rx="1.1" fill="#2a4479"/><path d="M6.5 28 C6.5 22.2 10.6 19.6 16 19.6 C21.4 19.6 25.5 22.2 25.5 28 Z" fill="#3a66b3"/><path d="M13.8 19.8 L16 22.4 L18.2 19.8" stroke="#dfe6f2" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg></span>
     <span class="nav-label">Профиль</span>
   </div>
 
