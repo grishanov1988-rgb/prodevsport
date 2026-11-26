@@ -702,20 +702,31 @@ body.light .pred-verdict { background: rgba(29,26,18,.04); }
 .pc-teams .match-teams-row { font-size: 11.5px; gap: 4px; }
 .pc-teams .match-teams-row .team-crest,
 .pc-teams .match-teams-row .team-crest-fallback { width: 14px; height: 14px; font-size: 7px; }
-.pc-right { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; gap: 1px; }
-.pc-pick { font-size: 11px; font-weight: var(--fw-black); white-space: nowrap; }
+.pc-line2 {
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+  margin-top: 4px; padding-top: 4px;
+  border-top: 1px dashed rgba(255,255,255,.08);
+}
+.pc-lbl {
+  font-size: 7.5px; font-weight: var(--fw-bold); color: var(--hint);
+  text-transform: uppercase; letter-spacing: .4px;
+}
+.pc-pick { font-size: 10.5px; font-weight: var(--fw-black); white-space: nowrap; }
 .pc-pick.win { color: var(--win); }
 .pc-pick.mid { color: var(--accent); }
 .pc-pick.lose { color: var(--lose); }
-.pc-real { color: var(--hint); font-weight: 600; font-size: 9.5px; }
+.pc-real-b { font-size: 10.5px; font-weight: var(--fw-black); white-space: nowrap; }
+.pc-real-b.win { color: var(--win); }
+.pc-real-b.mid { color: var(--accent); }
+.pc-real-b.lose { color: var(--lose); }
 .pc-pts { font-size: 9px; font-weight: var(--fw-black); padding: 0 6px; border-radius: 9px; line-height: 1.5; }
 .pc-pts.win  { background: rgba(110,220,140,.16); color: var(--win); }
 .pc-pts.mid  { background: rgba(230,196,108,.14); color: var(--accent); }
 .pc-pts.lose { background: rgba(229,96,90,.12); color: var(--lose); }
-.pc-pts.pending, .pc-pick.pending { color: var(--hint); }
-.pc-actions { display: flex; gap: 5px; margin-top: 5px; justify-content: flex-end; }
-.pc-actions .pca-btn {
-  padding: 2px 9px; font-size: 8.5px; line-height: 1.7;
+.pc-pts.pending, .pc-pick.pending, .pc-real-b.pending { color: var(--hint); }
+.pc-btns { display: flex; gap: 5px; margin-left: auto; flex-shrink: 0; }
+.pc-line2 .pca-btn {
+  padding: 2px 8px; font-size: 8.5px; line-height: 1.7;
   border-radius: 6px; white-space: nowrap;
 }
 
@@ -5875,25 +5886,27 @@ function renderMyPredictions(app) {
           '</div>' +
           '<div class="pc-body">' +
             '<div class="pc-teams">' + matchTeamsHtml(p) + '</div>' +
-            '<div class="pc-right">' +
-              '<div class="pc-pick ' + verdictCls + '">' +
-                pickLine +
-                (isPlayed ? ' <span class="pc-real">' + escapeHtml(p.realScore) + '</span>' : '') +
-              '</div>' +
-              '<div class="pc-pts ' + verdictCls + '">' +
-                (isPlayed ? '+' + pts : 'ожид.') +
-              '</div>' +
-            '</div>' +
           '</div>' +
-          '<div class="pc-actions">' +
-            (isPlayed && p.hasVideo
-              ? '<button class="pca-btn" ' +
-                  'onclick="openHighlights(\'' + escapeHtml(p.matchName).replace(/'/g, "\\'") + '\', \'' +
-                  escapeHtml(p.realScore) + '\', \'' + escapeHtml(p.leagueCode || '') + '\')">▶ Видеообзор</button>'
+          '<div class="pc-line2">' +
+            '<span class="pc-lbl">Прогноз</span>' +
+            '<b class="pc-pick ' + verdictCls + '">' + pickLine + '</b>' +
+            (isPlayed
+              ? '<span class="pc-lbl">Счёт</span>' +
+                '<b class="pc-real-b ' + verdictCls + '">' + escapeHtml(p.realScore) + '</b>'
               : '') +
-            '<button class="pca-btn primary compare-btn" ' +
-              'data-match="' + escapeHtml(p.matchName) + '" ' +
-              'data-league="' + escapeHtml(p.leagueCode || '') + '">⇄ Сравнить</button>' +
+            '<span class="pc-pts ' + verdictCls + '">' +
+              (isPlayed ? '+' + pts : 'ожид.') +
+            '</span>' +
+            '<span class="pc-btns">' +
+              (isPlayed && p.hasVideo
+                ? '<button class="pca-btn" ' +
+                    'onclick="openHighlights(\'' + escapeHtml(p.matchName).replace(/'/g, "\\'") + '\', \'' +
+                    escapeHtml(p.realScore) + '\', \'' + escapeHtml(p.leagueCode || '') + '\')">▶ Видеообзор</button>'
+                : '') +
+              '<button class="pca-btn primary compare-btn" ' +
+                'data-match="' + escapeHtml(p.matchName) + '" ' +
+                'data-league="' + escapeHtml(p.leagueCode || '') + '">⇄ Сравнить</button>' +
+            '</span>' +
           '</div>' +
         '</div>';
       });
