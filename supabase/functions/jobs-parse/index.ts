@@ -48,6 +48,7 @@ interface RawMatch {
 
 async function fetchAllMatchesForLeague(competition: string): Promise<RawMatch[]> {
   let allMatches: RawMatch[] = [];
+  const seenIds = new Set<number>();
   let page = 1;
   const limit = 100;
   let total = Infinity;
@@ -63,7 +64,17 @@ async function fetchAllMatchesForLeague(competition: string): Promise<RawMatch[]
       const data = await resp.json();
       if (!data.matches || !data.matches.length) break;
 
-      allMatches = allMatches.concat(data.matches);
+      // API может игнорировать limit/offset и возвращать один и тот же
+      // полный список на каждой странице (наблюдалось на ELC) — дедупим по id
+      const fresh = data.matches.filter((m: any) => m.id && !seenIds.has(m.id));
+      fresh.forEach((m: any) => seenIds.add(m.id));
+      allMatches = allMatches.concat(fresh);
+
+      // Страница не дала новых матчей — пагинация не поддерживается, всё уже получено
+      if (fresh.length === 0) {
+        console.log(`${competition}: страница ${page} без новых матчей — остановка пагинации`);
+        break;
+      }
       if (data.resultSet && typeof data.resultSet.count === 'number') {
         total = data.resultSet.count;
       } else if (data.matches.length < limit) {
@@ -263,6 +274,30 @@ async function syncTeamsForLeague(leagueCode: string): Promise<number> {
   }
 }
 
+// ------------------------------------------------------------
+//  Прогресс-отчётность в job_runs (видно в админ-панели)
+// ------------------------------------------------------------
+async function startJobRun(league: string | null, codes: string[]): Promise<number> {
+  try {
+    await db('job_runs', {
+      method: 'post',
+      body: [{ job: 'jobs-parse', league: league || 'ALL', status: 'running', stage: 'Старт',
+        leagues: codes.map((c) => ({ code: c, status: 'pending' })),
+        started_at: new Date().toISOString() }],
+      prefer: 'return=minimal',
+    });
+    const rows = await db('job_runs?job=eq.jobs-parse&order=id.desc&limit=1&select=id') ?? [];
+    return rows.length ? Number(rows[0].id) : 0;
+  } catch { return 0; }
+}
+
+async function patchJobRun(id: number, patch: any): Promise<void> {
+  if (!id) return;
+  try {
+    await db(`job_runs?id=eq.${id}`, { method: 'patch', body: patch, prefer: 'return=minimal' });
+  } catch { /* ignore */ }
+}
+
 Deno.serve(async (req) => {
   // Защита от посторонних вызовов
   const auth = req.headers.get('Authorization') || '';
@@ -278,44 +313,75 @@ Deno.serve(async (req) => {
   const results: any[] = [];
   const affectedNorms: Record<string, Set<string>> = {};
 
-  for (const code of codes) {
-    const r = await updateLeague(code);
-    results.push(r);
-    if ((r as any).ok && (r as any).newlyScored?.length) {
-      if (!affectedNorms[code]) affectedNorms[code] = new Set();
-      (r as any).newlyScored.forEach((m: any) => affectedNorms[code].add(m.match_norm));
-    }
-    // Эмблемы клубов — после паузы между лигами (отдельный запрос API)
-    await sleep(PAGE_DELAY_MS);
-    const teamsSynced = await syncTeamsForLeague(code);
-    if (teamsSynced > 0) console.log(`🛡 ${code}: эмблем ${teamsSynced}`);
-  }
+  // Прогресс по лигам для админ-панели
+  const runId = await startJobRun(onlyLeague, codes);
+  const leagueState: Record<string, any> = {};
+  codes.forEach((c) => { leagueState[c] = { code: c, status: 'pending' }; });
+  let currentStage = 'Старт';
+  const report = async (extraPatch: any = {}) => {
+    await patchJobRun(runId, { stage: currentStage, leagues: codes.map((c) => leagueState[c]), ...extraPatch });
+  };
 
-  // ── Пересчёт очков ──
-  let recalced = 0;
-  if (fullRecalc) {
-    recalced = await rebuildAllUserPoints();
-  } else {
-    // Только пользователи с прогнозами на новые счета
-    const names = new Set<string>();
-    for (const code of Object.keys(affectedNorms)) {
-      const norms = Array.from(affectedNorms[code]);
-      for (let i = 0; i < norms.length; i += 10) {
-        const chunk = norms.slice(i, i + 10);
-        const preds = await db(`predictions?league_code=eq.${enc(code)}&match_norm=in.(${chunk.map(enc).join(',')})&select=user_name`) ?? [];
-        preds.forEach((p: any) => names.add(p.user_name));
+  try {
+    for (const code of codes) {
+      leagueState[code].status = 'running';
+      leagueState[code].stage = 'Загрузка матчей';
+      currentStage = `${code}: загрузка матчей…`;
+      await report();
+
+      const r = await updateLeague(code);
+      results.push(r);
+      leagueState[code].status = (r as any).ok ? 'done' : 'error';
+      leagueState[code].stage = (r as any).ok
+        ? `${(r as any).matches || 0} матчей` + ((r as any).newlyScored?.length ? `, новых счетов: ${(r as any).newlyScored.length}` : '')
+        : ((r as any).error || 'ошибка');
+      if ((r as any).ok && (r as any).newlyScored?.length) {
+        if (!affectedNorms[code]) affectedNorms[code] = new Set();
+        (r as any).newlyScored.forEach((m: any) => affectedNorms[code].add(m.match_norm));
       }
+      currentStage = `${code}: ${leagueState[code].stage}`;
+      await report();
+
+      // Эмблемы клубов (отдельный запрос к API — маленькая пауза, квота football-data не тратится)
+      await sleep(1000);
+      const teamsSynced = await syncTeamsForLeague(code);
+      if (teamsSynced > 0) console.log(`🛡 ${code}: эмблем ${teamsSynced}`);
     }
-    for (const name of names) { await recalcUserPoints(name); recalced++; }
+
+    // ── Пересчёт очков ──
+    currentStage = 'Пересчёт очков игроков';
+    await report();
+    let recalced = 0;
+    if (fullRecalc) {
+      recalced = await rebuildAllUserPoints();
+    } else {
+      // Только пользователи с прогнозами на новые счета
+      const names = new Set<string>();
+      for (const code of Object.keys(affectedNorms)) {
+        const norms = Array.from(affectedNorms[code]);
+        for (let i = 0; i < norms.length; i += 10) {
+          const chunk = norms.slice(i, i + 10);
+          const preds = await db(`predictions?league_code=eq.${enc(code)}&match_norm=in.(${chunk.map(enc).join(',')})&select=user_name`) ?? [];
+          preds.forEach((p: any) => names.add(p.user_name));
+        }
+      }
+      for (const name of names) { await recalcUserPoints(name); recalced++; }
+    }
+    currentStage = `Готово. Пересчитано игроков: ${recalced}`;
+    await report({ status: 'done', finished_at: new Date().toISOString() });
+
+    invalidateRating();
+
+    return json({
+      ok: true,
+      targetYear: TARGET_YEAR,
+      leagues: results.map((r) => ({ league: (r as any).league, ok: (r as any).ok, matches: (r as any).matches || 0, newlyScored: (r as any).newlyScored?.length || 0, error: (r as any).error })),
+      recalcedUsers: recalced,
+      fullRecalc,
+      jobRunId: runId,
+    });
+  } catch (e: any) {
+    await report({ status: 'error', error: String(e?.message || e), finished_at: new Date().toISOString() });
+    return json({ ok: false, error: String(e?.message || e) }, 500);
   }
-
-  invalidateRating();
-
-  return json({
-    ok: true,
-    targetYear: TARGET_YEAR,
-    leagues: results.map((r) => ({ league: (r as any).league, ok: (r as any).ok, matches: (r as any).matches || 0, newlyScored: (r as any).newlyScored?.length || 0, error: (r as any).error })),
-    recalcedUsers: recalced,
-    fullRecalc,
-  });
 });

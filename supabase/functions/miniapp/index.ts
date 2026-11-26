@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
         admin_deletePrediction: adm.adminDeletePrediction,
         admin_editPrediction: adm.adminEditPrediction,
         admin_startUpdate: adm.adminStartUpdate,
+        admin_getJobStatus: adm.adminGetJobStatus,
         admin_runSync: adm.adminRunSync,
         admin_rebuildUserPoints: adm.adminRebuildUserPoints,
         admin_checkConnection: adm.adminCheckConnection,

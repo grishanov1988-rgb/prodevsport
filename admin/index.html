@@ -103,6 +103,13 @@
     font-size: 24px; cursor: pointer; }
   .empty { text-align: center; padding: 30px 20px; color: var(--hint); font-size: 13px; }
   .loading-sm { text-align: center; padding: 20px; color: var(--hint); font-size: 12px; }
+  .lg-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .lg-btn { padding: 9px 4px !important; font-size: 12px !important; white-space: nowrap; }
+  .job-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .job-chip {
+    padding: 4px 9px; border-radius: 14px; font-size: 11.5px; font-weight: 600;
+    background: rgba(128,128,128,.12); border: 1px solid rgba(128,128,128,.25);
+  }
 </style>
 </head>
 <body>
@@ -248,6 +255,7 @@ function updateNav() {
 
 function render() {
   var app = document.getElementById('app');
+  stopJobStatusPolling();
   try {
     if (STATE.tab === 'home')        return renderHome(app);
     if (STATE.tab === 'users')       return renderUsers(app);
@@ -796,8 +804,15 @@ function renderUpdate(app) {
     }
     html += '</div>';
 
-    html += '<div class="card"><h3>🎯 Ручной запуск</h3>' +
-      '<button class="btn" onclick="quickAction(\'update\')">🔄 updateAllLeagues</button>' +
+    html += '<div class="card"><h3>📊 Статус заданий</h3><div id="jobStatusBody"><div class="empty">Загрузка...</div></div></div>';
+
+    html += '<div class="card"><h3>🎯 Ручной запуск по лигам</h3>' +
+      '<div class="lg-grid">' +
+        LEAGUE_BTNS.map(function(l) {
+          return '<button class="btn btn-ghost btn-sm lg-btn" onclick="runLeagueUpdate(\'' + l[0] + '\')">' + l[1] + '</button>';
+        }).join('') +
+      '</div>' +
+      '<button class="btn" style="margin-top:10px" onclick="quickAction(\'update\')">🔄 Все лиги (полный цикл)</button>' +
       '<div class="btn-row">' +
         '<button class="btn btn-ghost btn-sm" onclick="quickAction(\'sync\')">📤 Только sync</button>' +
         '<button class="btn btn-ghost btn-sm" onclick="quickAction(\'rebuild\')">🔃 Пересчёт</button>' +
@@ -822,7 +837,93 @@ function renderUpdate(app) {
     html += '</div>';
 
     app.innerHTML = html;
+    startJobStatusPolling();
   });
+}
+
+// Кнопки лиг для ручного запуска
+var LEAGUE_BTNS = [
+  ['PL', '🏴 АПЛ'], ['CL', '🏆 ЛЧ'], ['PD', '🇪🇸 Ла Лига'], ['SA', '🇮🇹 Серия А'],
+  ['FL1', '🇫🇷 Лига 1'], ['ELC', '🏴 Чемпионшип'], ['PPL', '🇵🇹 Португалия']
+];
+var JOB_STATUS_TIMER = null;
+
+function runLeagueUpdate(lg) {
+  if (!confirm('Запустить обновление лиги ' + lg + '?')) return;
+  api('admin_startUpdate', lg).then(function(r) {
+    alert(r && r.ok ? '✅ Задание ' + (r.league || lg) + ' запущено' : '❌ ' + (r && r.error));
+    renderUpdate(document.getElementById('app'));
+  }).catch(function(e) {
+    alert('❌ ' + (e.message || e));
+  });
+}
+
+// Живой статус job_runs: этап + прогресс по лигам + последние прогоны
+function startJobStatusPolling() {
+  stopJobStatusPolling();
+  var load = function () {
+    var body = document.getElementById('jobStatusBody');
+    if (!body) { stopJobStatusPolling(); return; }
+    api('admin_getJobStatus').then(function (r) {
+      if (!r || !r.ok) {
+        body.innerHTML = '<div class="empty">Статус недоступен: ' + esc(r && r.error) + '</div>';
+        return;
+      }
+      renderJobStatus(body, r);
+    }).catch(function () {
+      body.innerHTML = '<div class="empty">Ошибка загрузки статуса</div>';
+    });
+  };
+  load();
+  JOB_STATUS_TIMER = setInterval(load, 5000);
+}
+
+function stopJobStatusPolling() {
+  if (JOB_STATUS_TIMER) { clearInterval(JOB_STATUS_TIMER); JOB_STATUS_TIMER = null; }
+}
+
+function renderJobStatus(body, r) {
+  var html = '';
+  if (r.running) {
+    var run = r.running;
+    var started = new Date(run.started_at).getTime();
+    var elapsed = Math.max(0, Math.round((Date.now() - started) / 1000));
+    var elStr = elapsed >= 60 ? Math.floor(elapsed / 60) + ' мин ' + (elapsed % 60) + ' сек' : elapsed + ' сек';
+    html += '<div class="row"><span class="label">▶️ Сейчас</span><span class="value">' +
+      esc(run.job) + (run.league ? ' · ' + esc(run.league) : '') + '</span></div>';
+    html += '<div class="row"><span class="label">Этап</span><span class="value">' + esc(run.stage || '—') + '</span></div>';
+    html += '<div class="row"><span class="label">Идёт</span><span class="value">' + elStr + '</span></div>';
+    if (run.leagues && typeof run.leagues === 'object') {
+      html += '<div class="job-chips">';
+      LEAGUE_BTNS.forEach(function (l) {
+        var st = run.leagues[l[0]];
+        var chip = st === 'done' ? '✅' : st === 'error' ? '❌' : st === 'running' ? '⏳' : '⬜';
+        html += '<span class="job-chip">' + chip + ' ' + esc(l[0]) + '</span>';
+      });
+      html += '</div>';
+    }
+  } else {
+    html += '<div class="empty">Сейчас ничего не выполняется</div>';
+  }
+
+  var runs = (r.runs || []).slice(0, 6);
+  if (runs.length) {
+    html += '<div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--muted,#888)">Последние запуски</div>';
+    runs.forEach(function (run) {
+      var icon = run.status === 'done' ? '✅' : run.status === 'error' ? '❌' : '⏳';
+      var t = fmtDate(run.started_at);
+      var dur = '';
+      if (run.finished_at && run.started_at) {
+        var s = Math.max(0, Math.round((new Date(run.finished_at) - new Date(run.started_at)) / 1000));
+        dur = ' · ' + (s >= 60 ? Math.floor(s / 60) + ' мин' : s + ' сек');
+      }
+      html += '<div class="row"><span class="label">' + icon + ' ' + esc(run.job) +
+        (run.league ? ' · ' + esc(run.league) : '') + '</span>' +
+        '<span class="value" style="font-size:11px">' + esc(t) + dur + '</span></div>';
+      if (run.error) html += '<div class="row"><span class="label" style="color:#e05">⚠️ ' + esc(run.error) + '</span></div>';
+    });
+  }
+  body.innerHTML = html;
 }
 
 function chainAction(action) {

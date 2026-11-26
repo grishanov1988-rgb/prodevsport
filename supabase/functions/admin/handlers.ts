@@ -289,16 +289,27 @@ export async function adminEditPrediction(predId: unknown, outcome: unknown, sco
 // ------------------------------------------------------------
 //  Обновления / синхронизация
 // ------------------------------------------------------------
-export async function adminStartUpdate() {
+export async function adminStartUpdate(league: unknown) {
   // Парсеры запускаются в отдельной функции; вызываем её «вслепую» —
   // админке не нужно ждать окончания (может занять минуты)
   try {
-    fetch(`${SUPABASE_URL}/functions/v1/jobs-parse`, {
+    const lg = String(league || '').trim().toUpperCase();
+    const qs = lg && (LEAGUES as any)[lg] ? `?league=${lg}` : '';
+    fetch(`${SUPABASE_URL}/functions/v1/jobs-parse${qs}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${ADMIN_SECRET}` },
     }).catch(() => {});
-    await logAdminEvent('ok', 'Запущено обновление лиг (jobs-parse)');
-    return { ok: true, started: true };
+    await logAdminEvent('ok', 'Запущено обновление лиг (jobs-parse' + (qs ? ' ' + lg : '') + ')');
+    return { ok: true, started: true, league: lg || 'ALL' };
+  } catch (e: any) { return { ok: false, error: e.message }; }
+}
+
+// Статус запусков jobs-parse: последние прогоны + прогресс по лигам
+export async function adminGetJobStatus() {
+  try {
+    const runs = await db('job_runs?order=id.desc&limit=12&select=id,job,league,status,stage,leagues,started_at,finished_at,error') ?? [];
+    const running = runs.find((r: any) => r.status === 'running') || null;
+    return { ok: true, running, runs };
   } catch (e: any) { return { ok: false, error: e.message }; }
 }
 

@@ -1266,6 +1266,15 @@ body.light .um-ach-badge { background: rgba(29,26,18,.04); }
   box-shadow: var(--inset-top);
 }
 .matches-back-btn:active { transform: scale(.96); border-color: rgba(230,196,108,.6); color: var(--accent); }
+.back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; margin-bottom: 10px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 20px; color: var(--text);
+  font-size: 12.5px; font-weight: var(--fw-med);
+  cursor: pointer; box-shadow: var(--inset-top);
+}
+.back-btn:active { transform: scale(.96); border-color: rgba(230,196,108,.6); color: var(--accent); }
 .matches-league-title {
   font-size: var(--fs-h3); font-weight: var(--fw-bold);
   margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -2790,6 +2799,16 @@ body.light .battle-timeline { background: rgba(29,26,18,.04); }
   position: relative;
 }
 .podium-ava .podium-medal { position: absolute; top: -11px; right: -9px; font-size: 16px; }
+/* 🏆 Кубок над пьедесталом (как на референсе) */
+.podium-cup { display: flex; justify-content: center; margin: 1px 0 3px; }
+.podium-cup svg { width: 32px; height: 32px; display: block; }
+.podium-item-1 .podium-cup { margin-top: 2px; }
+.podium-item-1 .podium-cup svg {
+  width: 44px; height: 44px;
+  filter: drop-shadow(0 3px 9px rgba(230,196,108,.5));
+}
+.podium-item-2 .podium-cup svg { filter: drop-shadow(0 2px 6px rgba(200,205,215,.35)); }
+.podium-item-3 .podium-cup svg { filter: drop-shadow(0 2px 6px rgba(205,140,80,.35)); }
 .podium-item-1 .podium-ava {
   width: 56px; height: 56px; font-size: 22px;
   border-color: rgba(230,196,108,.65); box-shadow: var(--gold-glow);
@@ -4306,10 +4325,19 @@ function renderRating(app) {
   var html = '<div class="header"><h1>Рейтинг</h1><div class="sub">Общий, по турам и приватные лиги</div></div>';
   html += ratingToggleHtml_();
 
-  // 👥 Приватные лиги — режим внутри вкладки «Рейтинг»
+  // 👥 Приватные лиги — теперь открываются из профиля, с кнопкой «назад»
   if (STATE.ratingMode === 'leagues') {
+    html = '<div class="header header-back">' +
+      '<button class="back-btn" id="leaguesBackBtn">← Профиль</button>' +
+      '<h1>👥 Лиги</h1><div class="sub">Приватные лиги с друзьями</div></div>';
     app.innerHTML = html + '<div class="content" id="privRoot"></div>';
-    bindRatingToggle_(app);
+    var backBtn = $('#leaguesBackBtn', app);
+    if (backBtn) backBtn.addEventListener('click', function () {
+      STATE.ratingMode = 'total';
+      STATE.tab = 'profile';
+      haptic('light');
+      render();
+    });
     if (STATE.currentPrivateLeague) {
       loadPrivateLeagueDetail(STATE.currentPrivateLeague);
     } else {
@@ -4342,8 +4370,7 @@ function renderRating(app) {
 function ratingToggleHtml_() {
   var modes = [
     ['total', '🏆 Общий'],
-    ['tour', '📅 За тур'],
-    ['leagues', '👥 Лиги']
+    ['tour', '📅 За тур']
   ];
   var html = '<div class="rating-toggle">';
   modes.forEach(function (m) {
@@ -4365,13 +4392,25 @@ function bindRatingToggle_(app) {
   });
 }
 
+function trophySvg_(place) {
+  var fill = place === 1 ? 'url(#cupg1)' : place === 2 ? 'url(#cupg2)' : 'url(#cupg3)';
+  return '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs>' +
+      '<linearGradient id="cupg1" x1="4" y1="2" x2="20" y2="20"><stop offset="0" stop-color="#f7e08e"/><stop offset=".55" stop-color="#d4a93e"/><stop offset="1" stop-color="#9a7420"/></linearGradient>' +
+      '<linearGradient id="cupg2" x1="4" y1="2" x2="20" y2="20"><stop offset="0" stop-color="#eef1f5"/><stop offset=".55" stop-color="#b9c1cb"/><stop offset="1" stop-color="#7d868f"/></linearGradient>' +
+      '<linearGradient id="cupg3" x1="4" y1="2" x2="20" y2="20"><stop offset="0" stop-color="#f2b98a"/><stop offset=".55" stop-color="#c07b3e"/><stop offset="1" stop-color="#86501f"/></linearGradient>' +
+    '</defs>' +
+    '<path fill="' + fill + '" d="M7 3h10v2h3v2c0 2.6-1.9 4.8-4.4 5.2A5 5 0 0 1 13 14.9V17h2.5a1 1 0 0 1 1 1v1.5a1 1 0 0 1-1 1H8.5a1 1 0 0 1-1-1V18a1 1 0 0 1 1-1H11v-2.1a5 5 0 0 1-2.6-2.7C5.9 11.8 4 9.6 4 7V5h3V3zm-1 4v.1c0 1.2.6 2.2 1.6 2.8A10 10 0 0 1 7 7H6zm12 0h-1a10 10 0 0 1-.6 2.9c1-.6 1.6-1.6 1.6-2.8V7z"/>' +
+  '</svg>';
+}
+
 function podiumItemHtml_(r, place) {
   if (!r) return '';
-  var medal = place === 1 ? '🥇' : place === 2 ? '🥈' : '🥉';
   var initial = escapeHtml((String(r.name || '?')[0] || '?').toUpperCase());
   return '' +
     '<div class="podium-card podium-item-' + place + '">' +
-      '<div class="podium-ava">' + initial + '<span class="podium-medal">' + medal + '</span></div>' +
+      '<div class="podium-cup">' + trophySvg_(place) + '</div>' +
+      '<div class="podium-ava">' + initial + '</div>' +
       '<div class="podium-name um-user-link" data-user="' + escapeHtml(r.name) + '" ' +
         'style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px">' +
         escapeHtml(r.name) + '</div>' +
@@ -4395,10 +4434,9 @@ function renderTotalRatingBody(leagues) {
     podiumItemHtml_(rating[2], 3) +
   '</div>';
 
-  // 🔍 Поиск + 📤 шеринг
+  // 📤 шеринг
   html +=
     '<div class="rating-tools">' +
-      '<div class="rating-search"><input type="text" id="ratingSearch" placeholder="Найти игрока..." maxlength="30"></div>' +
       '<button class="rating-share-btn" id="ratingShareBtn" title="Поделиться моим результатом">📤</button>' +
     '</div>';
 
@@ -4443,17 +4481,6 @@ function bindTotalRating(app) {
       openUserStatsModal(el.dataset.user);
     });
   });
-
-  // 🔍 Поиск по рейтингу
-  var search = document.getElementById('ratingSearch');
-  if (search) {
-    search.addEventListener('input', function () {
-      var q = search.value.trim().toLowerCase();
-      $$('#ratingList .rating-row').forEach(function (row) {
-        row.classList.toggle('hidden-by-search', !!q && row.dataset.name.indexOf(q) === -1);
-      });
-    });
-  }
 
   // 📤 Поделиться своим местом
   var shareBtn = document.getElementById('ratingShareBtn');
@@ -6325,6 +6352,13 @@ function renderTaskCard(t) {
     '</div>';
 }
 
+function openPrivateLeaguesFromProfile() {
+  haptic('light');
+  STATE.ratingMode = 'leagues';
+  STATE.tab = 'rating';
+  render();
+}
+
 function renderProfile(app) {
   if (STATE.viewingCollection) { renderCollectionView(app); return; }
 
@@ -6388,6 +6422,7 @@ function renderProfile(app) {
         '<button class="pf-action" onclick="openNotifyModal()"><span class="pf-action-ico">🔔</span><span>Уведомл.</span></button>' +
         '<button class="pf-action" onclick="scrollToStats()"><span class="pf-action-ico">📊</span><span>Статистика</span></button>' +
         '<button class="pf-action" onclick="goTab(\'shop\')"><span class="pf-action-ico">🎡</span><span>Фортуна</span></button>' +
+        '<button class="pf-action" onclick="openPrivateLeaguesFromProfile()"><span class="pf-action-ico">👥</span><span>Лиги</span></button>' +
       '</div>' +
       '<div class="pf-section" id="pfAccuracy">' +
         '<div class="pf-section-title">Точность прогнозов</div>' +
