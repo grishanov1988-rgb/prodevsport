@@ -6069,14 +6069,13 @@ function openHighlights(matchName, realScore, leagueCode) {
       var el = document.getElementById('highlightsBody');
       if (!el) return;
       if (!res || !res.ok) {
-        el.innerHTML = ytFallbackHtml_(matchName) + '<div class="cmp-empty">' +
+        el.innerHTML = '<div class="cmp-empty">' +
           escapeHtml((res && res.error) || 'Не удалось загрузить видеообзоры') + '</div>';
         return;
       }
       var videos = res.videos || [];
       if (!videos.length) {
-        el.innerHTML = '<div class="cmp-empty">Видеообзоры появятся позже — обычно в течение суток после матча</div>' +
-          ytFallbackHtml_(matchName);
+        el.innerHTML = '<div class="cmp-empty">Обзор этого матча пока не найден</div>';
         return;
       }
       var html = '';
@@ -6103,22 +6102,7 @@ function closeHighlights() {
   if (m) m.classList.remove('show');
 }
 
-// Фолбэк, когда ScoreBat не отдал видео: поиск обзора на YouTube во внешнем браузере
-function ytFallbackHtml_(matchName) {
-  var q = encodeURIComponent(String(matchName || '').replace(/\s+[-–—]\s+/, ' ') + ' обзор матча голы');
-  return '<div style="text-align:center;margin:4px 0 10px">' +
-    '<button class="pca-btn primary" onclick="openYouTubeSearch_(\'' + q + '\')">▶ Найти обзор на YouTube</button></div>';
-}
-function openYouTubeSearch_(encodedQuery) {
-  var url = 'https://www.youtube.com/results?search_query=' + encodedQuery;
-  try {
-    if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
-      Telegram.WebApp.openLink(url);
-      return;
-    }
-  } catch (e) { /* fallback ниже */ }
-  window.open(url, '_blank');
-}
+
 
 function openNotifyModal() {
   var backdrop = document.getElementById('notifyModal');

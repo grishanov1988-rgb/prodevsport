@@ -6,7 +6,7 @@
 
 import { db } from '../_shared/db.ts';
 import { enc, getPeriodKey } from '../_shared/util.ts';
-import { findScorebatVideos } from '../_shared/scorebat.ts';
+import { searchYouTubeMatchVideos } from '../_shared/youtube.ts';
 import { checkRateLimit } from '../_shared/core.ts';
 import { getXPProfile, addXP, spendXP, wasXPAwarded, logXPAward } from '../_shared/gamification.ts';
 
@@ -275,13 +275,17 @@ export async function getCollection(_chatId: unknown, userName: unknown) {
 }
 
 // ------------------------------------------------------------
-//  getMatchHighlights (ScoreBat — реальные видеообзоры) — кэш 1ч
+//  getMatchHighlights (YouTube — поиск видеообзоров матча)
 // ------------------------------------------------------------
 export async function getMatchHighlights(_leagueCode: unknown, matchName: unknown, _realScore: unknown) {
   try {
     const cleanMatch = String(matchName || '').trim();
     if (!cleanMatch) return { ok: false, error: 'Не указан матч' };
-    const videos = await findScorebatVideos(cleanMatch);
+    const found = await searchYouTubeMatchVideos(cleanMatch);
+    const videos = found.map((v) => ({
+      embed: `https://www.youtube-nocookie.com/embed/${v.videoId}`,
+      title: v.title,
+    }));
     return { ok: true, videos };
   } catch (e: any) { return { ok: false, error: e.message }; }
 }
