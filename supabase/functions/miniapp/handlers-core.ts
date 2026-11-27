@@ -222,6 +222,13 @@ export async function getUserPredictions(_chatId: unknown, userName: unknown) {
         } catch { /* ignore chunk */ }
       }
     }
+    // XP, выданный за эти матчи (exactScore/diffHit/outcomeHit, с учётом джокера ×2)
+    const xpMap: Record<string, number> = {};
+    try {
+      const xpLogs = await db(`xp_logs?user_name=eq.${enc(cleanUser)}&reason=in.(exactScore,diffHit,outcomeHit)&select=match_key,xp&limit=5000`) ?? [];
+      xpLogs.forEach((l: any) => { xpMap[l.match_key] = (xpMap[l.match_key] || 0) + (Number(l.xp) || 0); });
+    } catch { /* ignore */ }
+
     const list: any[] = [];
     for (const p of preds) {
       const m = matchMap[p.league_code + '||' + p.match_norm];
@@ -229,6 +236,7 @@ export async function getUserPredictions(_chatId: unknown, userName: unknown) {
       const realScore = m ? m.real_score : null;
       let points: number | null = null;
       if (realScore) points = calcPointsForPrediction(p.outcome, p.score, realScore).points;
+      const matchKey = p.league_code + '||' + p.match_norm;
       const L: any = (LEAGUES as any)[p.league_code] || {};
       list.push({
         id: p.id, matchName: p.match_name, leagueCode: p.league_code,
@@ -238,6 +246,7 @@ export async function getUserPredictions(_chatId: unknown, userName: unknown) {
         matchTs: m && m.utc_date ? new Date(m.utc_date).getTime() : 0,
         savedTs: p.saved_at ? new Date(p.saved_at).getTime() / 1000 : 0,
         outcome: p.outcome, score: p.score, realScore, points,
+        xpWon: realScore ? (xpMap[matchKey] || 0) : 0,
       });
     }
 

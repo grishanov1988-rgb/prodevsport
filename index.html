@@ -724,6 +724,15 @@ body.light .pred-verdict { background: rgba(29,26,18,.04); }
 .pc-pts.mid  { background: rgba(230,196,108,.14); color: var(--accent); }
 .pc-pts.lose { background: rgba(229,96,90,.12); color: var(--lose); }
 .pc-pts.pending, .pc-pick.pending, .pc-real-b.pending { color: var(--hint); }
+/* Выигранный XP за матч — синий чип */
+.pc-xp {
+  font-size: 9px; font-weight: var(--fw-black); white-space: nowrap;
+  padding: 1px 6px; border-radius: 9px; line-height: 1.5;
+  color: #5aa9ff;
+  background: rgba(90,169,255,.13);
+  border: 1px solid rgba(90,169,255,.35);
+  text-shadow: 0 0 8px rgba(90,169,255,.45);
+}
 .pc-btns { display: flex; gap: 5px; margin-left: auto; flex-shrink: 0; }
 .pc-line2 .pca-btn {
   padding: 2px 8px; font-size: 8.5px; line-height: 1.7;
@@ -5977,6 +5986,9 @@ function renderMyPredictions(app) {
             '<span class="pc-pts ' + verdictCls + '">' +
               (isPlayed ? '+' + pts : 'ожид.') +
             '</span>' +
+            (isPlayed && Number(p.xpWon) > 0
+              ? '<span class="pc-xp">+' + Number(p.xpWon) + 'xp</span>'
+              : '') +
             '<span class="pc-btns">' +
               (isPlayed
                 ? '<button class="pca-ico" title="Голы" ' +
