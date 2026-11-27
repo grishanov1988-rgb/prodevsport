@@ -3,7 +3,7 @@
 //  Триггеры/цепочки GAS заменены cron-расписанием Supabase.
 // ============================================================
 
-import { db } from '../_shared/db.ts';
+import { db, dbAll } from '../_shared/db.ts';
 import { LEAGUES, SUPABASE_URL, ADMIN_SECRET, BOT_TOKEN } from '../_shared/config.ts';
 import { enc, formatDateMsk, calcPointsForPrediction } from '../_shared/util.ts';
 import { buildRating, invalidateRating, getUserAchievements, getUserChats } from '../_shared/core.ts';
@@ -463,7 +463,7 @@ const BOT_FORMATION_SLOTS = [
 
 export async function adminCreateBotTeams(count: unknown) {
   const n = parseInt(String(count), 10) || 5;
-  const catalog = await db('cards_catalog?is_active=eq.true&select=id,name,position,ovr,rarity') ?? [];
+  const catalog = await dbAll('cards_catalog?is_active=eq.true&select=id,name,position,ovr,rarity') ?? [];
   if (!catalog.length) return { ok: false, error: 'Нет карточек' };
 
   const byGroup: Record<string, any[]> = { GK: [], DEF: [], MID: [], FWD: [], COACH: [] };

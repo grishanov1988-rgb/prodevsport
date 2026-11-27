@@ -46,7 +46,52 @@ export async function db(endpoint: string, options: DbOptions = {}): Promise<any
   return text ? JSON.parse(text) : [];
 }
 
-/** upsert по конфликт-ключам (resolution=merge-duplicates) */
+/** Точное число строк: HEAD + Prefer: count=exact → content-range: 0-0/N */
+export async function dbCount(endpoint: string): Promise<number> {
+  const url = `${SUPABASE_URL}/rest/v1/${endpoint}`;
+  const res = await fetch(url, {
+    method: 'HEAD',
+    headers: {
+      apikey: SUPABASE_SERVICE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+      'Accept-Profile': 'public',
+      Prefer: 'count=exact',
+    },
+  });
+  if (!res.ok) throw new Error(`Supabase HEAD ${endpoint} → ${res.status}`);
+  const range = res.headers.get('content-range') ?? '';
+  const total = range.split('/')[1];
+  return Number(total) || 0;
+}
+
+/** Все строки: пагинация Range-заголовками по chunk (обходит max-rows PostgREST) */
+export async function dbAll(endpoint: string, chunk = 1000): Promise<any[]> {
+  const sep = endpoint.includes('?') ? '&' : '?';
+  const base = endpoint.includes('select=')
+    ? `${SUPABASE_URL}/rest/v1/${endpoint}`
+    : `${SUPABASE_URL}/rest/v1/${endpoint}${sep}select=*`;
+  const out: any[] = [];
+  let from = 0;
+  for (;;) {
+    const res = await fetch(base, {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'Accept-Profile': 'public',
+        Range: `${from}-${from + chunk - 1}`,
+      },
+    });
+    if (!res.ok) throw new Error(`Supabase GET ${endpoint} range ${from} → ${res.status}`);
+    const rows: any[] = await res.json();
+    out.push(...rows);
+    const contentRange = res.headers.get('content-range') ?? '';
+    const total = Number(contentRange.split('/')[1]) || 0;
+    from += chunk;
+    if (rows.length < chunk || from >= total) break;
+  }
+  return out;
+}
 export async function upsert(table: string, rows: unknown[], onConflict?: string): Promise<void> {
   let ep = `${table}?on_conflict=${onConflict ?? 'user_name'}`;
   await db(ep, {

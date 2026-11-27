@@ -4,7 +4,7 @@
 //  buyJoker, getJokerStatus, getWheelStatus, spinWheel, sellCard, getXPHistory
 // ============================================================
 
-import { db } from '../_shared/db.ts';
+import { db, dbCount, dbAll } from '../_shared/db.ts';
 import { enc, getPeriodKey } from '../_shared/util.ts';
 import { searchYouTubeMatchVideos } from '../_shared/youtube.ts';
 import { checkRateLimit } from '../_shared/core.ts';
@@ -67,7 +67,7 @@ export async function getShop(_chatId: unknown, userName: unknown) {
     const cards = await db(`user_cards?user_name=eq.${enc(clean)}&select=card_id,quantity`) ?? [];
     const totalCards = cards.reduce((s: number, c: any) => s + (Number(c.quantity) || 0), 0);
     const uniqueCards = cards.length;
-    const catalog = await db('cards_catalog?select=id&is_active=eq.true') ?? [];
+    const catalogCount = await dbCount('cards_catalog?is_active=eq.true');
     return {
       ok: true, balance,
       boxes: boxes.map((b: any) => ({
@@ -76,8 +76,8 @@ export async function getShop(_chatId: unknown, userName: unknown) {
         canAfford: balance >= b.price_xp,
       })),
       stats: {
-        balance, totalCards, uniqueCards, catalogTotal: catalog.length,
-        completionPct: catalog.length ? Math.round((uniqueCards / catalog.length) * 100) : 0,
+        balance, totalCards, uniqueCards, catalogTotal: catalogCount,
+        completionPct: catalogCount ? Math.round((uniqueCards / catalogCount) * 100) : 0,
       },
     };
   } catch (e: any) { return { ok: false, error: e.message }; }
@@ -87,7 +87,7 @@ export async function getShop(_chatId: unknown, userName: unknown) {
 //  Розыгрыш карточек по параметрам бокса (общий для openBox и колеса)
 // ------------------------------------------------------------
 async function drawCardsFromBox(box: any): Promise<any[]> {
-  const catalog = await db('cards_catalog?is_active=eq.true&select=id,name,position,club,country,country_code,ovr,rarity,image_url,pac,sho,pas,dri,def,phy,is_gk') ?? [];
+  const catalog = await dbAll('cards_catalog?is_active=eq.true&select=id,name,position,club,country,country_code,ovr,rarity,image_url,pac,sho,pas,dri,def,phy,is_gk,card_kind') ?? [];
   const byRarity: Record<string, any[]> = {};
   catalog.forEach((c: any) => { (byRarity[c.rarity] = byRarity[c.rarity] || []).push(c); });
   const weights = box.rarity_weights || { common: 55, rare: 30, epic: 12, legendary: 3 };
@@ -128,7 +128,7 @@ async function saveCardsToUser(clean: string, received: any[]): Promise<void> {
 function cardPublic(c: any) {
   return {
     id: c.id, name: c.name, position: c.position, club: c.club, country: c.country,
-    countryCode: c.country_code, ovr: c.ovr, rarity: c.rarity, imageUrl: c.image_url,
+    countryCode: c.country_code, ovr: c.ovr, rarity: c.rarity, imageUrl: c.image_url, cardKind: c.card_kind,
     pac: c.pac, sho: c.sho, pas: c.pas, dri: c.dri, def: c.def, phy: c.phy, isGk: c.is_gk,
   };
 }
@@ -183,7 +183,7 @@ export async function claimDailyBox(_chatId: unknown, userName: unknown) {
     if (last === todayKey) return { ok: false, error: 'Сегодня уже забирали. Приходите завтра!', alreadyClaimed: true };
 
     const weights = { common: 60, rare: 25, epic: 10, legendary: 4, mythic: 1 };
-    const catalog = await db('cards_catalog?is_active=eq.true&select=id,name,position,club,country,country_code,ovr,rarity,image_url,pac,sho,pas,dri,def,phy,is_gk') ?? [];
+    const catalog = await dbAll('cards_catalog?is_active=eq.true&select=id,name,position,club,country,country_code,ovr,rarity,image_url,pac,sho,pas,dri,def,phy,is_gk,card_kind') ?? [];
     if (!catalog.length) return { ok: false, error: 'Каталог карточек пуст' };
 
     const byRarity: Record<string, any[]> = {};
@@ -242,14 +242,14 @@ export async function claimDailyBox(_chatId: unknown, userName: unknown) {
 export async function getCollection(_chatId: unknown, userName: unknown) {
   try {
     const clean = String(userName || '').trim();
-    const rows = await db(`user_cards?user_name=eq.${enc(clean)}&select=card_id,quantity,first_obtained_at,cards_catalog(id,name,position,club,country,country_code,ovr,rarity,image_url)&order=first_obtained_at.desc`) ?? [];
+    const rows = await db(`user_cards?user_name=eq.${enc(clean)}&select=card_id,quantity,first_obtained_at,cards_catalog(id,name,position,club,country,country_code,ovr,rarity,image_url,card_kind)&order=first_obtained_at.desc`) ?? [];
     const byRarity: Record<string, number> = { common: 0, rare: 0, epic: 0, legendary: 0, mythic: 0 };
     const list = rows.map((r: any) => {
       const c = r.cards_catalog || {};
       if (byRarity[c.rarity] != null) byRarity[c.rarity] += Number(r.quantity) || 0;
       return {
         cardId: r.card_id, name: c.name, position: c.position, club: c.club, country: c.country,
-        countryCode: c.country_code, ovr: c.ovr, rarity: c.rarity, imageUrl: c.image_url,
+        countryCode: c.country_code, ovr: c.ovr, rarity: c.rarity, imageUrl: c.image_url, cardKind: c.card_kind,
         pac: c.pac, sho: c.sho, pas: c.pas, dri: c.dri, def: c.def, phy: c.phy, isGk: c.is_gk,
         quantity: Number(r.quantity) || 1, obtainedAt: r.first_obtained_at,
       };
@@ -260,14 +260,14 @@ export async function getCollection(_chatId: unknown, userName: unknown) {
       if (d !== 0) return d;
       return (Number(b.ovr) || 0) - (Number(a.ovr) || 0);
     });
-    const totalCatalog = await db('cards_catalog?select=id&is_active=eq.true') ?? [];
+    const totalCatalogCount = await dbCount('cards_catalog?is_active=eq.true');
     return {
       ok: true, cards: list,
       stats: {
         totalCards: list.reduce((s: number, c: any) => s + c.quantity, 0),
         uniqueCards: list.length,
-        catalogTotal: totalCatalog.length,
-        completionPct: totalCatalog.length ? Math.round((list.length / totalCatalog.length) * 100) : 0,
+        catalogTotal: totalCatalogCount,
+        completionPct: totalCatalogCount ? Math.round((list.length / totalCatalogCount) * 100) : 0,
         byRarity,
       },
     };
