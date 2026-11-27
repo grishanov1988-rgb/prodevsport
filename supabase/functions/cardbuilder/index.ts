@@ -126,39 +126,86 @@ Deno.serve(async (req) => {
         byTitle.get(t)!.push(r.id);
       });
       let updated = 0, miss = 0;
-      const titles = Array.from(byTitle.keys());
-      const CHUNK = 40;
-      for (let i = 0; i < titles.length && Date.now() - started < 110000; i += CHUNK) {
-        const chunk = titles.slice(i, i + CHUNK);
+      const names = Array.from(byTitle.keys());
+      const BAD = /basketball|ice hockey|handball|volleyball|american football/;
+      const BALL = /football|soccer|player|manager|winger|midfield|defender|forward|goalkeeper|strik|winger|fullback|centre-back|left-back|right-back/i;
+      let diag: any = null;
+
+      // Фаза 1: пакетно имя + вариант "(footballer)" — по 25 имён (50 тайтлов) на запрос
+      const CHUNK = 25;
+      const unresolved: string[] = [];
+      for (let i = 0; i < names.length && Date.now() - started < 60000; i += CHUNK) {
+        const chunk = names.slice(i, i + CHUNK);
+        const variants: string[] = [];
+        for (const n of chunk) variants.push(n, `${n} (footballer)`);
         const d = await wikiJson({
           action: 'query', prop: 'pageimages|description', redirects: '1',
-          pithumbsize: '300', titles: chunk.join('|'),
+          pithumbsize: '300', titles: variants.join('|'),
         });
-        const norm: Record<string, string> = {};
-        for (const n of d?.query?.normalized || []) norm[n.from] = n.to;
-        for (const r of d?.query?.redirects || []) norm[r.from] = r.to;
-        const pages = d?.query?.pages ? Object.values(d.query.pages) : [];
-        const found = new Map<string, string>();
-        for (const p of pages as any[]) {
-          if (p.missing !== undefined || !p.title) continue;
-          const desc = String(p.description || '').toLowerCase();
-          const bad = /basketball|ice hockey|handball|volleyball|american football/.test(desc);
-          if (p.thumbnail?.source && !bad) found.set(String(p.title), String(p.thumbnail.source).split('?')[0]);
+        if (body.debug && !diag) {
+          diag = {
+            chunkSample: chunk.slice(0, 6),
+            pages: d?.query?.pages ? (Object.values(d.query.pages) as any[]).slice(0, 5).map((p) => JSON.stringify(p).slice(0, 220)) : null,
+          };
         }
-        for (const t of chunk) {
-          const target = norm[t] || t;
-          const photo = found.get(target) || null;
-          const ids = byTitle.get(t) || [];
-          for (const id of ids) {
-            if (photo) {
+        if (!d?.query?.pages) { unresolved.push(...chunk); continue; }
+        const norm: Record<string, string> = {};
+        for (const n2 of d.query.normalized || []) norm[n2.from] = n2.to;
+        for (const r of d.query.redirects || []) norm[r.from] = r.to;
+        const pageByTitle: Record<string, any> = {};
+        for (const p of Object.values(d.query.pages) as any[]) pageByTitle[String(p.title)] = p;
+        const walk = (t: string): any => {
+          let seen = 0;
+          while (norm[t] && seen++ < 5) t = norm[t];
+          return pageByTitle[t];
+        };
+        for (const n of chunk) {
+          let photo: string | null = null;
+          // 1) вариант "X (footballer)" — принимаем, если нет явно чужого вида спорта
+          const fb = walk(`${n} (footballer)`);
+          if (fb && fb.missing === undefined && fb.thumbnail?.source && !BAD.test(String(fb.description || '').toLowerCase())) {
+            photo = String(fb.thumbnail.source).split('?')[0];
+          }
+          // 2) само имя — только с футбольным описанием (защита от городов/однофамильцев)
+          if (!photo) {
+            const pl = walk(n);
+            if (pl && pl.missing === undefined && pl.thumbnail?.source
+              && !BAD.test(String(pl.description || '').toLowerCase())
+              && BALL.test(String(pl.description || ''))) {
+              photo = String(pl.thumbnail.source).split('?')[0];
+            }
+          }
+          const ids = byTitle.get(n) || [];
+          if (photo) {
+            for (const id of ids) {
               await db(`cards_catalog?id=eq.${id}`, { method: 'patch', body: { image_url: photo }, prefer: 'return=minimal' });
               updated++;
-            } else miss++;
+            }
+          } else {
+            unresolved.push(n);
+            miss += ids.length;
           }
         }
         await new Promise((res) => setTimeout(res, 1600));
       }
-      return json({ ok: true, refill: true, taken: rows.length, updated, miss, ms: Date.now() - started });
+
+      // Фаза 2: поисковый фолбэк по одному для оставшихся (полное имя из поиска)
+      let searched = 0;
+      for (const n of unresolved) {
+        if (Date.now() - started > 105000) break;
+        const photo = await resolvePhoto(n);
+        searched++;
+        const ids = byTitle.get(n) || [];
+        if (photo) {
+          for (const id of ids) {
+            await db(`cards_catalog?id=eq.${id}`, { method: 'patch', body: { image_url: photo }, prefer: 'return=minimal' });
+            updated++;
+          }
+          miss = Math.max(0, miss - ids.length);
+        }
+        await new Promise((res) => setTimeout(res, 200));
+      }
+      return json({ ok: true, refill: true, taken: rows.length, updated, miss, searched, ms: Date.now() - started, diag });
     }
 
     await runPool(cards, 2, async (c: any) => {
