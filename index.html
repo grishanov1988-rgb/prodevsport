@@ -451,8 +451,15 @@ body.light .team-crest { box-shadow: 0 0 0 1px rgba(0,0,0,.07), 0 2px 6px rgba(0
   box-shadow: var(--gold-glow);
 }
 .match-card.done { background: rgba(230,196,108,.05); border-color: rgba(230,196,108,.25); }
-.match-head { display: flex; flex-direction: row; align-items: center; gap: 8px; flex: 1; min-width: 0; flex-wrap: wrap; }
+.match-head { display: flex; flex-direction: row; align-items: center; gap: 8px; flex: 1; min-width: 0; flex-wrap: nowrap; overflow: hidden; }
 .match-head > .my-pick { flex-basis: 100%; }
+/* Одна строка: команды сжимаются, имена обрезаются многоточием */
+.match-head .match-teams-row { min-width: 0; overflow: hidden; }
+.match-head .match-teams-row .team { min-width: 0; }
+.match-head .match-teams-row .team-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.match-side .my-pick { padding: 3px 8px; gap: 4px; border-radius: 8px; }
+.match-side .my-pick .mp-outcome, .match-side .my-pick .mp-score { font-size: 11px; }
+.match-side .my-pick .mp-check { width: 15px; height: 15px; font-size: 9px; }
 .match-time {
   align-self: flex-start;
   font-size: 9.5px; font-weight: var(--fw-bold);
@@ -477,7 +484,7 @@ body.light .team-crest { box-shadow: 0 0 0 1px rgba(0,0,0,.07), 0 2px 6px rgba(0
   font-size: 13px; font-weight: var(--fw-bold); color: var(--win);
   white-space: nowrap; text-align: center; line-height: 1.1;
 }
-.match-final small { display: block; font-size: 8.5px; font-weight: var(--fw-reg); color: var(--hint); letter-spacing: .4px; text-transform: uppercase; }
+.match-final small { display: inline; margin-left: 4px; font-size: 8.5px; font-weight: var(--fw-reg); color: var(--hint); letter-spacing: .4px; text-transform: uppercase; }
 
 /* П1 / X / П2 */
 .odds-row { display: flex; gap: 6px; flex-shrink: 0; }
@@ -5767,13 +5774,13 @@ function renderMatchesList(leagueCode) {
     // Левая часть: команды + дата/время в одной строке
     html += '<div class="match-head">';
     html += matchTeamsHtml(m, m.time || '');
-    if (m.realScore && already) html += myPickHtml; // мой прогноз — строкой под названием
     html += '</div>';
 
     // Правая часть
     html += '<div class="match-side">';
     if (m.realScore) {
-      // Сыгранный матч: итоговый счёт
+      // Сыгранный матч: одна строка — прогноз + итоговый счёт
+      if (already) html += myPickHtml;
       html += '<div class="match-final">' + escapeHtml(String(m.realScore).replace('-', ':')) +
         '<small>финал</small></div>';
     } else if (already) {
